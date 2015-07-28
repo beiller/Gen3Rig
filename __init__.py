@@ -25,9 +25,8 @@ bl_info = {
     "blender": (2, 50, 0),
     "description": "Automatic rig conversion for genesis 3 characters, exported as DAE",
     "location": "View3d tools panel",
-    #"wiki_url": "http://wiki.blender.org/index.php/Extensions:2.5/Py/"
-    #            "Scripts/Rigging/Rigify",
-    #"tracker_url": "http://github.com/cessen/rigify/issues",
+    "wiki_url": "https://github.com/beiller/Gen3Rig/wiki"
+    "tracker_url": "https://github.com/beiller/Gen3Rig/issues",
     "category": "Rigging"
 }
 
