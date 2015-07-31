@@ -25,6 +25,10 @@ import os
 import bpy
 from .utils import *
 
+ob = None
+amt = None
+WGT_PREFIX = "WGT-"  # Prefix for widget objects
+
 
 layers_map = {
 "Genesis3Female":0,
@@ -514,7 +518,6 @@ def create_foot_widget(rig, bone_name):
 
 
 def setup_widgets():
-
 	def do_create_widget(widget_function, bone_name):
 		widget_function(ob, bone_name)
 		ob.pose.bones[bone_name].custom_shape = bpy.data.objects[WGT_PREFIX + bone_name]

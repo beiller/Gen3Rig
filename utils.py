@@ -20,6 +20,18 @@
 
 #Except of code taken from blender Rigify addon (utils.py)
 
+import bpy
+
+ORG_PREFIX = "ORG-"  # Prefix of original bones.
+MCH_PREFIX = "MCH-"  # Prefix of mechanism bones.
+DEF_PREFIX = "DEF-"  # Prefix of deformation bones.
+WGT_PREFIX = "WGT-"  # Prefix for widget objects
+ROOT_NAME = "root"   # Name of the root bone.
+
+WGT_LAYERS = [x == 19 for x in range(0, 20)]  # Widgets go on the last scene layer.
+
+MODULE_NAME = "rigify"  # Windows/Mac blender is weird, so __package__ doesn't work
+
 #=============================================
 # Widget creation
 #=============================================

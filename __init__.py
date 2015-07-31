@@ -22,10 +22,10 @@ bl_info = {
     "name": "Gen3Rig",
     "version": (0, 1),
     "author": "beiller",
-    "blender": (2, 50, 0),
+    "blender": (2, 40, 0),
     "description": "Automatic rig conversion for genesis 3 characters, exported as DAE",
     "location": "View3d tools panel",
-    "wiki_url": "https://github.com/beiller/Gen3Rig/wiki"
+    "wiki_url": "https://github.com/beiller/Gen3Rig/wiki",
     "tracker_url": "https://github.com/beiller/Gen3Rig/issues",
     "category": "Rigging"
 }
@@ -54,6 +54,8 @@ class Gen3RigBuild(bpy.types.Operator):
         amt = ob.data
         amt.name = "GenesisRigArmature"
         bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        main.ob = ob
+        main.amt = amt
         main.do_setup()
         main.create_gaze_bones()
         main.create_arm_ik()
