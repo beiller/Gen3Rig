@@ -421,18 +421,36 @@ def get_set_limits(bone_name_1, bone_name_2):
     return [-180,180,-180,180,-180,180,True]
 
 
-def set_spine_stiffness(scalar):
-    if not scalar:
-        scalar = 0.1
+def set_spine_stiffness():
     armature = get_armature()
     if not armature:
         return False, "Object is not supported type (Armature or Mesh)"
+    set_stiffness('spine', armature.phys_pose_spine_stiffness)
+    return True, "Success" 
+
+
+
+def set_stiffness(bone_group, scalar):
+    bone_groups = {
+        'spine': ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"],
+        'shoulders': ["chestUpper","Collar.R","Collar.L"]
+    }
+    armature = get_armature()
+    if not armature:
+        return False, "Object is not supported type (Armature or Mesh)"
+    if bone_group not in bone_groups: 
+        return False, "Invalid bone group name: %s" % bone_group
+
     physpose_data = json.loads(armature.phys_pose_data)
-    spine_bone_names = ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper","head"]
+    scalar = armature.phys_pose_spine_stiffness
+    spine_bone_names = bone_groups[bone_group]
+    print("Checking the following")
+    print(spine_bone_names)
     for name in physpose_data['joint_names']:
         po_names = name.split('-')[2:]
         if not (po_names[0] in spine_bone_names and po_names[1] in spine_bone_names):
             continue
+        print(po_names)
         p = get_set_limits(po_names[0], po_names[1])
         con = bpy.data.objects[name]
         con.rigid_body_constraint.use_limit_ang_x = True
@@ -569,6 +587,16 @@ class SetDampingPhysPoseRig(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class SetSpineStiffnessPhysPoseRig(bpy.types.Operator):
+    bl_idname = "object.set_spine_stiffness_physpose_rig"
+    bl_label = "SetSpineStiffnessPhysPoseRig"
+    def execute(self, context):
+        success, message = set_spine_stiffness()
+        if not success:
+            self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
 class PinPhysObject(bpy.types.Operator):
     bl_idname = "object.pin_phys_object"
     bl_label = "PinPhysObject"
@@ -619,6 +647,9 @@ class PhysPosePanel(bpy.types.Panel):
             row = layout.row()
             row.prop(ob, 'phys_pose_damping', slider=True)
             row.operator("object.set_damping_physpose_rig", text='Set Damping')
+            row2 = layout.row()
+            row2.prop(ob, 'phys_pose_spine_stiffness', slider=True)
+            row2.operator("object.set_spine_stiffness_physpose_rig", text='Set Spine Stiffness')
         layout.label("PhysRig Tools")
         if ob.phys_pose_data != '':
             layout.operator("object.reset_physpose_rig", text='Reset PhysPose Rig to Base Pose')
@@ -635,10 +666,12 @@ def register():
     bpy.utils.register_class(PinPhysObject)
     bpy.utils.register_class(UnpinPhysObject)
     bpy.utils.register_class(ResetPhysPoseRig)
+    bpy.utils.register_class(SetSpineStiffnessPhysPoseRig)
 
     bpy.utils.register_class(PhysPosePanel)
     bpy.types.Object.phys_pose_data = bpy.props.StringProperty(name = "PhysPoseData")
     bpy.types.Object.phys_pose_damping = bpy.props.FloatProperty(name = "PhysPoseDamping", default=1.0, min=0.0, max=1.0)
+    bpy.types.Object.phys_pose_spine_stiffness = bpy.props.FloatProperty(name = "PhysPoseSpineStiffness", default=1.0, min=0.0, max=1.0)
 
 
 def unregister():
@@ -650,10 +683,12 @@ def unregister():
     bpy.utils.unregister_class(PinPhysObject)
     bpy.utils.unregister_class(UnpinPhysObject)
     bpy.utils.unregister_class(ResetPhysPoseRig)
+    bpy.utils.unregister_class(SetSpineStiffnessPhysPoseRig)
 
     bpy.utils.unregister_class(PhysPosePanel)
     del bpy.types.Object.phys_pose_data
     del bpy.types.Object.phys_pose_damping
+    del bpy.types.Object.phys_pose_spine_stiffness
 
 
 if __name__ == "__main__":
