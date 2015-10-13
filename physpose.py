@@ -311,20 +311,10 @@ def set_damping():
     if not armature:
         return False, "Object is not supported type (Armature or Mesh)"
     physpose_data = json.loads(armature.phys_pose_data)
+    damping_setting = armature.phys_pose_damping
     for name in physpose_data['phys_object_names']:
-        bpy.data.objects[name].rigid_body.angular_damping = 1
-        bpy.data.objects[name].rigid_body.linear_damping = 1
-    return True, "Success" 
-
-
-def remove_damping():
-    armature = get_armature()
-    if not armature:
-        return False, "Object is not supported type (Armature or Mesh)"
-    physpose_data = json.loads(armature.phys_pose_data)
-    for name in physpose_data['phys_object_names']:
-        bpy.data.objects[name].rigid_body.angular_damping = 0.25
-        bpy.data.objects[name].rigid_body.linear_damping = 0.25
+        bpy.data.objects[name].rigid_body.angular_damping = damping_setting
+        bpy.data.objects[name].rigid_body.linear_damping = damping_setting
     return True, "Success" 
 
 
@@ -422,6 +412,42 @@ def set_rotations():
             #elif unmute_ik and type(con) == bpy.types.KinematicConstraint and con.mute:
             #    con.mute = False
     return True, "Success"
+
+
+def get_set_limits(bone_name_1, bone_name_2):
+    for c in constraints:
+        if c[0] == bone_name_1 and c[1] == bone_name_2:
+            return c[2]
+    return [-180,180,-180,180,-180,180,True]
+
+
+def set_spine_stiffness(scalar):
+    if not scalar:
+        scalar = 0.1
+    armature = get_armature()
+    if not armature:
+        return False, "Object is not supported type (Armature or Mesh)"
+    physpose_data = json.loads(armature.phys_pose_data)
+    spine_bone_names = ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper","head"]
+    for name in physpose_data['joint_names']:
+        po_names = name.split('-')[2:]
+        if not (po_names[0] in spine_bone_names and po_names[1] in spine_bone_names):
+            continue
+        p = get_set_limits(po_names[0], po_names[1])
+        con = bpy.data.objects[name]
+        con.rigid_body_constraint.use_limit_ang_x = True
+        con.rigid_body_constraint.limit_ang_x_lower = math.radians(p[0]) * scalar
+        con.rigid_body_constraint.limit_ang_x_upper = math.radians(p[1]) * scalar
+        con.rigid_body_constraint.use_limit_ang_y = True
+        con.rigid_body_constraint.limit_ang_y_lower = math.radians(p[2]) * scalar
+        con.rigid_body_constraint.limit_ang_y_upper = math.radians(p[3]) * scalar
+        con.rigid_body_constraint.use_limit_ang_z = True
+        con.rigid_body_constraint.limit_ang_z_lower = math.radians(p[4]) * scalar
+        con.rigid_body_constraint.limit_ang_z_upper = math.radians(p[5]) * scalar
+        con.rigid_body_constraint.disable_collisions = p[6]
+        
+    return True, "Success" 
+    
 
 ob = None
 amt = None
@@ -543,16 +569,6 @@ class SetDampingPhysPoseRig(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class RemoveDampingPhysPoseRig(bpy.types.Operator):
-    bl_idname = "object.remove_damping_physpose_rig"
-    bl_label = "RemoveDampingPhysPoseRig"
-    def execute(self, context):
-        success, message = remove_damping()
-        if not success:
-            self.report({'INFO'}, message)
-        return {'FINISHED'}
-
-
 class PinPhysObject(bpy.types.Operator):
     bl_idname = "object.pin_phys_object"
     bl_label = "PinPhysObject"
@@ -590,15 +606,24 @@ class PhysPosePanel(bpy.types.Panel):
     bl_region_type = "UI"
  
     def draw(self, context):
-        self.layout.operator("object.generate_physpose_rig", text='Generate PhysPose Rig')
-        self.layout.operator("object.delete_physpose_rig", text='Delete PhysPose Rig')
-        self.layout.operator("object.set_rotations_physpose_rig", text='Apply PhysPose to Rig')
-        self.layout.operator("object.unmute_constraints_physpose_rig", text='Unmute Constraints on PhysPose Rig')
-        self.layout.operator("object.set_damping_physpose_rig", text='Damping Enable')
-        self.layout.operator("object.remove_damping_physpose_rig", text='Damping Disable')
-        self.layout.operator("object.pin_phys_object", text='Pin Object(s)')
-        self.layout.operator("object.unpin_phys_object", text='Unpin Object(s)')
-        self.layout.operator("object.reset_physpose_rig", text='Reset PhysPose Rig to Base Pose')
+        ob = context.object
+        layout = self.layout
+
+        layout.operator("object.generate_physpose_rig", text='Generate PhysPose Rig')
+        if ob.phys_pose_data != '':
+            layout.operator("object.delete_physpose_rig", text='Delete PhysPose Rig')
+            layout.label("Keyframe Tools")
+            layout.operator("object.set_rotations_physpose_rig", text='Apply PhysPose to Rig')
+            layout.operator("object.unmute_constraints_physpose_rig", text='Unmute Constraints on PhysPose Rig')
+            layout.label("Set Damping")
+            row = layout.row()
+            row.prop(ob, 'phys_pose_damping', slider=True)
+            row.operator("object.set_damping_physpose_rig", text='Set Damping')
+        layout.label("PhysRig Tools")
+        if ob.phys_pose_data != '':
+            layout.operator("object.reset_physpose_rig", text='Reset PhysPose Rig to Base Pose')
+        layout.operator("object.pin_phys_object", text='Pin Object(s)')
+        layout.operator("object.unpin_phys_object", text='Unpin Object(s)')
 
 
 def register():
@@ -607,13 +632,13 @@ def register():
     bpy.utils.register_class(SetRotationsPhysPoseRig)
     bpy.utils.register_class(UnmuteConstraintsPhysPoseRig)
     bpy.utils.register_class(SetDampingPhysPoseRig)
-    bpy.utils.register_class(RemoveDampingPhysPoseRig)
     bpy.utils.register_class(PinPhysObject)
     bpy.utils.register_class(UnpinPhysObject)
     bpy.utils.register_class(ResetPhysPoseRig)
 
     bpy.utils.register_class(PhysPosePanel)
     bpy.types.Object.phys_pose_data = bpy.props.StringProperty(name = "PhysPoseData")
+    bpy.types.Object.phys_pose_damping = bpy.props.FloatProperty(name = "PhysPoseDamping", default=1.0, min=0.0, max=1.0)
 
 
 def unregister():
@@ -622,13 +647,13 @@ def unregister():
     bpy.utils.unregister_class(SetRotationsPhysPoseRig)
     bpy.utils.unregister_class(UnmuteConstraintsPhysPoseRig)
     bpy.utils.unregister_class(SetDampingPhysPoseRig)
-    bpy.utils.unregister_class(RemoveDampingPhysPoseRig)
     bpy.utils.unregister_class(PinPhysObject)
     bpy.utils.unregister_class(UnpinPhysObject)
     bpy.utils.unregister_class(ResetPhysPoseRig)
 
     bpy.utils.unregister_class(PhysPosePanel)
     del bpy.types.Object.phys_pose_data
+    del bpy.types.Object.phys_pose_damping
 
 
 if __name__ == "__main__":
