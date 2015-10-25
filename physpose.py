@@ -3,8 +3,13 @@ import math
 from mathutils import Vector, Matrix
 import json
 
+#import physobject
 
 def create_rect(sx, sy, sz, name, offset = None):
+    """
+        Creates 3D rectangle with size x (sx), y, and z.
+         Y is scaled to 0.0 ... 1.0 range
+    """
     bpy.ops.object.mode_set(mode='OBJECT')
     sx *= 0.5
     #sy *= 0.5
@@ -42,7 +47,6 @@ def create_rect(sx, sy, sz, name, offset = None):
     phys_object_dict[name] = cube_object
     return cube_object
 
-
 def get_phys_name(obname, bonename):
     return 'PHYS-%s-%s' % (obname, bonename)
 
@@ -53,7 +57,7 @@ def create_copy_rotation_constraint(pose_bone):
     const.target = phys_object_dict[get_phys_name(ob.name, pose_bone.name)]
 
 
-def create_cube_at_bone(bone_name, size_x = 0.1, size_z = 0.1, length = None, offset = None):
+def create_cube_at_bone(ob, bone_name, size_x = 0.1, size_z = 0.1, length = None, offset = None):
     bpy.ops.object.mode_set(mode='POSE')
     if bone_name not in ob.pose.bones:
         return False
@@ -75,9 +79,9 @@ def create_cube_at_bone(bone_name, size_x = 0.1, size_z = 0.1, length = None, of
     return True
 
 
-def create_cube_at_bone_lr(bone_name, size_x = 0.1, size_z = 0.1, length = None, offset = None):
-    create_cube_at_bone(bone_name+".L", size_x, size_z, length, offset)
-    create_cube_at_bone(bone_name+".R", size_x, size_z, length, offset)
+def create_cube_at_bone_lr(ob, bone_name, size_x = 0.1, size_z = 0.1, length = None, offset = None):
+    create_cube_at_bone(ob, bone_name+".L", size_x, size_z, length, offset)
+    create_cube_at_bone(ob, bone_name+".R", size_x, size_z, length, offset)
 
 
 def setup_constraint(con, bone, p):
@@ -141,6 +145,125 @@ def create_constraint(bone_name, bone_name2, parameters):
     con.name = joint_name
     setup_constraint(con, bone, parameters)
     joints[joint_name] = con
+
+
+def get_bones_by_chain(bone_name, attach_object_name, chain_length=90, bone_size=0.1, bone_dof=(2, 2, 2), mass=0.01):
+    bpy.ops.object.mode_set(mode='OBJECT')
+    armature = get_armature()
+    if not armature:
+        return False, "Object is not supported type (Armature or Mesh)"
+    bpy.ops.object.mode_set(mode='POSE')
+    if bone_name not in armature.pose.bones:
+        return False
+    bone_list = []    
+    bone = armature.pose.bones[bone_name]
+    bone_list.append(bone)
+    def build_recurse(bone, bone_list):
+        for child in bone.children:
+            bone_list.append(child)
+            build_recurse(child, bone_list)
+    build_recurse(bone, bone_list)
+    build_chain(bone_list, attach_object_name, bone_size, bone_dof, mass)
+    return bone_list
+
+
+def build_chain(bone_list, attach_object_name, bone_size, bone_dof, mass):
+    bpy.ops.object.mode_set(mode='OBJECT')
+    armature = get_armature()
+
+    def create_physobj(bone, ob, size_x, size_z, length=None, offset=None):
+        bone_dist = Vector(bone.tail) - Vector(bone.head)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        physobj_name = get_phys_name(ob.name, bone.name)
+        if not length:
+            length = bone_dist.length
+        cube = create_rect(size_x, length, size_z, physobj_name, offset)
+        cube.layers = ob.layers
+        mat = Matrix()
+        mat[0][0:4] = (bone.x_axis[0], bone.y_axis[0], bone.z_axis[0], bone.head[0])
+        mat[1][0:4] = (bone.x_axis[1], bone.y_axis[1], bone.z_axis[1], bone.head[1])
+        mat[2][0:4] = (bone.x_axis[2], bone.y_axis[2], bone.z_axis[2], bone.head[2])
+        cube.matrix_world = mat
+        const = bone.constraints.new('COPY_ROTATION')
+        const.name = 'PHYSPOSE-COPY-ROTATION'
+        const.target = bpy.data.objects[physobj_name]
+        return cube
+
+    physobj_list = []
+    #disable some constraints???
+    for bone in bone_list:   
+        for con in bone.constraints:
+            if type(con) in [bpy.types.CopyRotationConstraint, bpy.types.KinematicConstraint]:
+                con.mute = True
+        physobj_list.append( create_physobj(bone, armature, bone_size, bone_size, None, None) )
+
+    bpy.ops.object.select_all(action='DESELECT')
+    for phys_object in physobj_list:
+        phys_object.select = True
+        bpy.context.scene.objects.active = phys_object
+    bpy.ops.rigidbody.objects_add(type='ACTIVE')
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.select_all(action='DESELECT')
+    for phys_object in physobj_list:
+        #phys_object.rigid_body.angular_damping = 1.0
+        #phys_object.rigid_body.linear_damping = 1.0
+        phys_object.rigid_body.use_margin = True
+        phys_object.rigid_body.collision_margin = 0.001
+        phys_object.rigid_body.mass = mass
+        #phys_object.rigid_body.collision_shape = 'MESH'
+
+
+    def create_constraint(armature, bone1, bone2, parameters):
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.ops.object.empty_add(type='ARROWS', location=bone1.head)
+        mat = Matrix()
+        mat[0][0:4] = (bone2.x_axis[0], bone2.y_axis[0], bone2.z_axis[0], bone2.head[0])
+        mat[1][0:4] = (bone2.x_axis[1], bone2.y_axis[1], bone2.z_axis[1], bone2.head[1])
+        mat[2][0:4] = (bone2.x_axis[2], bone2.y_axis[2], bone2.z_axis[2], bone2.head[2])
+        con = bpy.context.scene.objects.active
+        con.matrix_world = mat
+        con.layers = armature.layers
+        bpy.ops.rigidbody.constraint_add()
+        con.rigid_body_constraint.type = 'GENERIC'
+        con.rigid_body_constraint.object1 = bpy.data.objects[get_phys_name(armature.name, bone1.name)]
+        con.rigid_body_constraint.object2 = bpy.data.objects[get_phys_name(armature.name, bone2.name)]
+        joint_name = 'JOINT-%s-%s-%s' % (armature.name, bone1.name, bone2.name)
+        con.name = joint_name
+        setup_constraint(con, bone, parameters)
+
+    #BUILD CONSTRAINTS!!!!!!!!!!
+    cdx, cdy, cdz = bone_dof
+    constraint_parameters = [-cdx,cdx,-cdy,cdy,-cdz,cdz,True]
+
+    for i in range(len(bone_list)):   
+        if i+1 < len(bone_list):
+            create_constraint( armature, bone_list[i], bone_list[i+1], constraint_parameters )
+
+    #SELECT the root and the connector object and create that constraint
+    if attach_object_name and attach_object_name in bpy.data.objects:
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        physobj_list[0].select = True
+        bpy.context.scene.objects.active = physobj_list[0]
+        bpy.data.objects[attach_object_name].select = True
+        bpy.context.scene.objects.active = bpy.data.objects[attach_object_name]
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.ops.object.empty_add(type='ARROWS', location=physobj_list[0].location)
+        con = bpy.context.scene.objects.active
+        con.layers = armature.layers
+        bpy.ops.rigidbody.constraint_add()
+        con.rigid_body_constraint.type = 'GENERIC'
+        con.rigid_body_constraint.object1 = physobj_list[0]
+        con.rigid_body_constraint.object2 = bpy.data.objects[attach_object_name]
+        joint_name = 'JOINT-%s-%s-%s' % (armature.name, attach_object_name, physobj_list[0].name)
+        con.name = joint_name
+        setup_constraint(con, bone, constraint_parameters)
+
+    const = bone_list[0].constraints.new('COPY_LOCATION')
+    const.name = 'PHYSPOSE-COPY-LOCATION'
+    const.target = physobj_list[0]
 
 
 bones_to_create = {
@@ -214,16 +337,16 @@ constraints = [
     [ 'Shin.L', 'Foot.L', [-75,40,-12,12,-10,10,True] ],
     [ 'Shin.R', 'Foot.R', [-75,40,-12,12,-10,10,True] ],
     #HAND BONES---------------------------------------------------------------
-    [ 'Hand.R', 'Index1.R', [-20,20,-2,2,-60,5,True] ],
-    [ 'Hand.R', 'Mid1.R', [-20,20,-2,2,-60,5,True] ],
-    [ 'Hand.R', 'Ring1.R', [-20,20,-2,2,-60,5,True] ],
-    [ 'Hand.R', 'Pinky1.R', [-20,20,-2,2,-60,5,True] ],
-    [ 'Hand.R', 'Thumb2.R', [-50,50,-50,50,-50,50,True] ],
-    [ 'Hand.L', 'Index1.L', [-20,20,-2,2,-5,60,True] ],
-    [ 'Hand.L', 'Mid1.L', [-20,20,-2,2,-5,60,True] ],
-    [ 'Hand.L', 'Ring1.L', [-20,20,-2,2,-5,60,True] ],
-    [ 'Hand.L', 'Pinky1.L', [-20,20,-2,2,-5,60,True] ],
-    [ 'Hand.L', 'Thumb2.L', [-50,50,-50,50,-50,50,True] ]
+    [ 'Hand.R', 'Index1.R', [-5,5,-2,2,-60,5,True] ],
+    [ 'Hand.R', 'Mid1.R', [-5,5,-2,2,-60,5,True] ],
+    [ 'Hand.R', 'Ring1.R', [-5,5,-2,2,-60,5,True] ],
+    [ 'Hand.R', 'Pinky1.R', [-5,5,-2,2,-60,5,True] ],
+    [ 'Hand.R', 'Thumb2.R', [-30,30,-30,30,-30,30,True] ],
+    [ 'Hand.L', 'Index1.L', [-5,5,-2,2,-5,60,True] ],
+    [ 'Hand.L', 'Mid1.L', [-5,5,-2,2,-5,60,True] ],
+    [ 'Hand.L', 'Ring1.L', [-5,5,-2,2,-5,60,True] ],
+    [ 'Hand.L', 'Pinky1.L', [-5,5,-2,2,-5,60,True] ],
+    [ 'Hand.L', 'Thumb2.L', [-30,30,-30,30,-30,30,True] ]
 ]
 
 
@@ -244,13 +367,14 @@ def create_rig(shrinkwrap_object_name = None, damping = 1.0):
             xlen, zlen, total_length = v
         elif len(v) == 4:
             xlen, zlen, total_length, offset = v
-        create_cube_at_bone(k, xlen, zlen, total_length, offset)
+        create_cube_at_bone(ob, k, xlen, zlen, total_length, offset)
 
     bpy.ops.object.select_all(action='DESELECT')
     for phys_object in phys_object_list:
         phys_object.select = True
         bpy.context.scene.objects.active = phys_object
     bpy.ops.rigidbody.objects_add(type='ACTIVE')
+    bpy.ops.rigidbody.mass_calculate(material='Rubber', density=1522)
 
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT')
@@ -259,6 +383,7 @@ def create_rig(shrinkwrap_object_name = None, damping = 1.0):
         phys_object.rigid_body.linear_damping = damping
         phys_object.rigid_body.use_margin = True
         phys_object.rigid_body.collision_margin = 0.001
+
         #phys_object.rigid_body.collision_shape = 'MESH'
 
     if shrinkwrap_object_name:
@@ -432,7 +557,7 @@ def set_spine_stiffness():
 
 def set_stiffness(bone_group, scalar):
     bone_groups = {
-        'spine': ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"],
+        'spine': ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper","head"],
         'shoulders': ["chestUpper","Collar.R","Collar.L"]
     }
     armature = get_armature()
@@ -693,3 +818,10 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+
+#get_bones_by_chain("genitals", "PHYS-GenesisRig1-pelvis", chain_length=90, bone_size=0.05, bone_dof=(7,0,7))
+#get_bones_by_chain("genitals.balls", "PHYS-GenesisRig1-pelvis", chain_length=90, bone_size=0.1, bone_dof=(37,0,37))
+
+#for obj in bpy.data.objects:
+#    if obj.name[0:4] == 'PHYS':
+#        obj.draw_type = 'BOUNDS'
