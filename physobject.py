@@ -110,8 +110,8 @@ class PhysObject():
         bpy.ops.rigidbody.mass_calculate(density=1100) #1.1g/m^3
         self.phys_object.rigid_body.angular_damping = 0.75
         self.phys_object.rigid_body.linear_damping = 0.75
-        #self.phys_object.rigid_body.use_margin = True
-        #self.phys_object.rigid_body.collision_margin = 0.001
+        self.phys_object.rigid_body.use_margin = True
+        self.phys_object.rigid_body.collision_margin = 0.001
         sx, sy, sz = self.phys_object.dimensions
         """
             470 is an adjustment factor because mass is calculated based on bounds
@@ -170,6 +170,23 @@ class Constraint:
             self.bone_constraint = bpy.data.objects[self.get_name()]
         else:
             self.create_constraint()
+
+
+    def point_constraint(self, scalars):
+        if len(scalars) < 3:
+            return False
+        p = self.parameters
+        con = self.bone_constraint
+        for i in range(3):
+            rmin = p[i]
+            rmax = p[i+1]
+            dist = rmax - rmin
+            dist *= ((scalars[i] + 1.0) / 2.0)
+            pos = rmin + dist
+
+            p[i] = max(pos - 5.0, rmin)
+            p[i+1] = min(pos + 5.0, rmax)
+        self._setup_constraint(con, p, 1.0)
 
 
     def _setup_constraint(self, con, p, scalar = 1.0):
@@ -237,12 +254,25 @@ class PhysPoseRig():
         self.armature = armature
 
 
-    def set_stiffness(self, scalar, bones=None, override_iterations=None):
+    def set_rotations(self, scalars, bones=None, override_iterations=None):
+        if len(scalars) < 3:
+            return False
         for constraint in self.constraints:
-            print(constraint.phys_object1.pose_bone.name)
-            print(constraint.phys_object2.pose_bone.name)
             if bones is None\
                 or (constraint.phys_object1.pose_bone.name in bones and constraint.phys_object2.pose_bone.name in bones):
+                constraint.point_constraint(scalars)
+                if override_iterations is not None:
+                    constraint.bone_constraint.rigid_body_constraint.use_override_solver_iterations = True
+                    constraint.bone_constraint.rigid_body_constraint.solver_iterations = override_iterations
+                else:
+                    constraint.bone_constraint.rigid_body_constraint.use_override_solver_iterations = False
+
+
+    def set_stiffness(self, scalar, bones=None, override_iterations=None):
+        for constraint in self.constraints:
+            if bones is None\
+                or (constraint.phys_object1.pose_bone.name in bones and constraint.phys_object2.pose_bone.name in bones):
+                #scale by scalar (or scalars)
                 constraint._setup_constraint(constraint.bone_constraint, constraint.parameters, scalar=scalar)
                 if override_iterations is not None:
                     constraint.bone_constraint.rigid_body_constraint.use_override_solver_iterations = True
@@ -299,6 +329,14 @@ class PhysPoseRig():
             con.bone_constraint.hide = True
 
 
+    def apply_stiffness_map(self, stiffness_map):
+        for m in stiffness_map:
+            iterations = None
+            if len(m) > 2:
+                iterations = m[2]
+            self.set_stiffness(m[0], m[1], iterations)
+
+
     def create_rig(self, shrinkwrap_object_name = None, damping = 1.0):
         bones_to_create = {
             "pelvis" : [0.27, 0.18, None, (0.0, -0.16, -0.02), True],
@@ -352,8 +390,8 @@ class PhysPoseRig():
             [ 'neckUpper', 'head', [-27,25,-22,22,-20,20,True] ],
             [ 'chestUpper', 'Collar.L', [-26,17,-30,30,-10,50,True] ],
             [ 'chestUpper', 'Collar.R', [-17,26,-30,30,-50,10,True] ],
-            [ 'Collar.L', 'ShldrBend.L', [-85,35,0,0,-110,40,True] ],
-            [ 'Collar.R', 'ShldrBend.R', [-35,85,0,0,-40,110,True] ],
+            [ 'Collar.L', 'ShldrBend.L', [-85,35,0,0,-110,110,True] ],
+            [ 'Collar.R', 'ShldrBend.R', [-35,85,0,0,-110,110,True] ],
             [ 'pelvis', 'ThighBend.L', [-115,35,-20,20,-85,20,True] ],
             [ 'pelvis', 'ThighBend.R', [-115,35,-20,20,-25,85,True] ],
             [ 'ThighBend.L', 'ThighTwist.L', [0,0,-55,55,0,0,True] ],
@@ -394,6 +432,13 @@ class PhysPoseRig():
             con = Constraint(phys_map[bone_name1], phys_map[bone_name2], parameters)
             self.constraints.append(con)
 
+        minimize_twist = [
+            [0.1, ["ShldrBend.R","ShldrTwist.R","ShldrBend.L","ShldrTwist.L"], 25],
+            [0.1, ["ThighBend.R","ThighTwist.R","ThighBend.L","ThighTwist.L"], 25],
+            [0.1, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
+        ]
+
+        self.apply_stiffness_map(minimize_twist)
 
 
 
@@ -402,28 +447,40 @@ class PhysPoseRig():
 #    total += phys.phys_object.rigid_body.mass
 #print("Total weight: ", total)
 
+
 rigs = []
 def rig1():
+    stiffness_map = [
+        [0.1, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
+        [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
+        [0.4, ["head","neckUpper"]],
+        [0.25, ["chestUpper","Collar.R","Collar.L"]]
+    ]
+
+    braid_dof = 6.0
     poserig = PhysPoseRig(bpy.data.objects["GenesisRig1"])
     poserig.clear_constraints()
     poserig.create_rig("Genesis3Female")
-    poserig.build_chain("genitals", "pelvis", "shedick", bone_size=0.15)
-    poserig.set_stiffness(0.25, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"])
-    poserig.set_stiffness(0.4, ["head","neckUpper"])
-    poserig.set_stiffness(0.5, ["chestUpper","Collar.R","Collar.L"])
+    poserig.build_chain("genitals", "pelvis", "shedick", bone_size=0.15, bone_dof=(braid_dof, braid_dof, braid_dof))
+    poserig.apply_stiffness_map(stiffness_map)
     poserig.hide_constraints()
     rigs.append(poserig)
 
 def rig2():
+    stiffness_map = [
+        [0.1, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
+        [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
+        [0.4, ["head","neckUpper"]],
+        [0.25, ["chestUpper","Collar.R","Collar.L"]]
+    ]
+
+    braid_dof = 65.0
     poserig = PhysPoseRig(bpy.data.objects["GenesisRig3"])
     poserig.clear_constraints()
     poserig.create_rig("Genesis3Female.002")
-    braid_dof = 45.0
     poserig.build_chain("braid.R", "head", "FTBraids-skinInstance", bone_size=0.17, bone_dof=(braid_dof, braid_dof, braid_dof))
     poserig.build_chain("braid.L", "head", "FTBraids-skinInstance", bone_size=0.17, bone_dof=(braid_dof, braid_dof, braid_dof))
-    poserig.set_stiffness(0.25, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"])
-    poserig.set_stiffness(0.4, ["head","neckUpper"])
-    poserig.set_stiffness(0.5, ["chestUpper","Collar.R","Collar.L"])
+    poserig.apply_stiffness_map(stiffness_map)
     poserig.hide_constraints()
     rigs.append(poserig)
 
@@ -436,3 +493,4 @@ for rig in rigmap:
     bpy.context.scene.layers = bpy.data.objects[rig].layers
     rigmap[rig]()
 
+#rigs[0].set_rotations((1.0, 0.0, 0.0), ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"])
