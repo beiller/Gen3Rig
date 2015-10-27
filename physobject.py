@@ -433,9 +433,9 @@ class PhysPoseRig():
             self.constraints.append(con)
 
         minimize_twist = [
-            [0.1, ["ShldrBend.R","ShldrTwist.R","ShldrBend.L","ShldrTwist.L"], 25],
-            [0.1, ["ThighBend.R","ThighTwist.R","ThighBend.L","ThighTwist.L"], 25],
-            [0.1, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
+            [0.6, ["ShldrBend.R","ShldrTwist.R","ShldrBend.L","ShldrTwist.L"], 25],
+            [0.6, ["ThighBend.R","ThighTwist.R","ThighBend.L","ThighTwist.L"], 25],
+            [0.6, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
         ]
 
         self.apply_stiffness_map(minimize_twist)
@@ -446,17 +446,15 @@ class PhysPoseRig():
 #for phys in poserig.phys_objects:
 #    total += phys.phys_object.rigid_body.mass
 #print("Total weight: ", total)
-
+stiffness_map = [
+    [0.01, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
+    [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
+    [0.2, ["head","neckUpper"]],
+    [0.25, ["chestUpper","Collar.R","Collar.L"]]
+]
 
 rigs = []
 def rig1():
-    stiffness_map = [
-        [0.1, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
-        [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
-        [0.4, ["head","neckUpper"]],
-        [0.25, ["chestUpper","Collar.R","Collar.L"]]
-    ]
-
     braid_dof = 6.0
     poserig = PhysPoseRig(bpy.data.objects["GenesisRig1"])
     poserig.clear_constraints()
@@ -467,13 +465,6 @@ def rig1():
     rigs.append(poserig)
 
 def rig2():
-    stiffness_map = [
-        [0.1, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
-        [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
-        [0.4, ["head","neckUpper"]],
-        [0.25, ["chestUpper","Collar.R","Collar.L"]]
-    ]
-
     braid_dof = 65.0
     poserig = PhysPoseRig(bpy.data.objects["GenesisRig3"])
     poserig.clear_constraints()
