@@ -818,10 +818,3 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-
-#get_bones_by_chain("genitals", "PHYS-GenesisRig1-pelvis", chain_length=90, bone_size=0.05, bone_dof=(7,0,7))
-#get_bones_by_chain("genitals.balls", "PHYS-GenesisRig1-pelvis", chain_length=90, bone_size=0.1, bone_dof=(37,0,37))
-
-#for obj in bpy.data.objects:
-#    if obj.name[0:4] == 'PHYS':
-#        obj.draw_type = 'BOUNDS'
