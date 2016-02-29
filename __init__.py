@@ -34,11 +34,10 @@ if "bpy" in locals():
     import imp
     imp.reload(utils)
     imp.reload(main)
+    imp.reload(physobject)
 else:
-    from . import utils, main
-
+    from . import utils, main, physobject
 import bpy
-
 
 class Gen3RigBuild(bpy.types.Operator):
     """Gen3RigBuild"""
@@ -87,12 +86,15 @@ def menu_func(self, context):
 def register():
     bpy.utils.register_class(Gen3RigBuild)
     bpy.utils.register_class(UIPanel)
+    physobject.register()
 
 
 def unregister():
     bpy.utils.unregister_class(Gen3RigBuild)
     bpy.utils.unregister_class(UIPanel)
+    physobject.unregister()
 
 
 if __name__ == "__main__":
     register()
+

@@ -3,6 +3,10 @@ import math
 from mathutils import Vector, Matrix
 import json
 
+try:
+    from . import custom_template
+except ImportError:
+    custom_template = None
 
 class PhysObject():
     def __init__(self, armature, pose_bone, parameters = None, shrinkwrap_object_name = None):
@@ -237,7 +241,7 @@ class PhysPoseRig():
                 'pose_bone': phys_object.pose_bone.name
             }
             data['phys_objects'].append(po)
-            data['stored_pose'][phys_object.phys_object.name] = [(x[0], x[1], x[2], x[3]) for x in bpy.data.objects[phys_object.phys_object.name].matrix_world]
+            data['stored_pose'][phys_object.phys_object.name] = [(x[0], x[1], x[2], x[3]) for x in self.rest_phys_matrix[phys_object.phys_object.name]]
         for constraint in self.constraints:
             co = {
                 'phys_object1': constraint.phys_object1.phys_object.name,
@@ -258,6 +262,7 @@ class PhysPoseRig():
             po = PhysObject(self.armature, self.armature.pose.bones[pose_bone_name], None, None)
             self.phys_objects.append(po)
             phys_obj_dict[po.get_name()] = po
+            self.rest_phys_matrix[po.get_name()] = Matrix(data['stored_pose'][po.get_name()])
         for con in data['constraints']:
             self.constraints.append(Constraint(phys_obj_dict[con['phys_object1']], phys_obj_dict[con['phys_object2']], con['parameters']))
 
@@ -268,6 +273,11 @@ class PhysPoseRig():
         self.phys_objects = []
         self.constraints = []
         self.shrinkwrap_object_name = None
+        self.rest_phys_matrix = {}
+
+    def set_rest_matrix(self):
+        for phys_object in self.phys_objects:
+            self.rest_phys_matrix[phys_object.phys_object.name] = bpy.data.objects[phys_object.phys_object.name].matrix_world
 
     def set_rotations(self, scalars, bones=None, override_iterations=None):
         if len(scalars) < 3:
@@ -445,8 +455,9 @@ class PhysPoseRig():
             [0.6, ["ThighBend.R","ThighTwist.R","ThighBend.L","ThighTwist.L"], 25],
             [0.6, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
         ]
-
+        self.set_rest_matrix()
         self.apply_stiffness_map(minimize_twist)
+        return True, "Success"
 
     def delete_rig(self):
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -475,12 +486,22 @@ class PhysPoseRig():
         for phys in self.phys_objects:
             name = phys.phys_object.name
             bpy.data.objects[name].select = True
-        for con in self.constraints:
-            name = con.bone_constraint.name
+        for constraint in self.constraints:
+            name = constraint.bone_constraint.name
+            bpy.data.objects[name].hide = False
             bpy.data.objects[name].select = True
 
         bpy.ops.object.delete()
         return True, "Success"
+
+    def restore_physpose_rig(self):
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.context.scene.layers = self.armature.layers
+        for phys_obj in self.phys_objects:
+            bpy.data.objects[phys_obj.get_name()].matrix_world = self.rest_phys_matrix[phys_obj.get_name()]
+        return True, "Success"
+
 
 def print_total_weight(poserig):
     total = 0
@@ -496,26 +517,6 @@ stiffness_map = [
 ]
 
 rigs = {}
-custom_template = {}
-
-def GenesisRig1(poserig):
-    braid_dof = 6.0
-    poserig.build_chain("genitals", "pelvis", "shedick", bone_size=0.15, bone_dof=(braid_dof, braid_dof, braid_dof))
-    poserig.apply_stiffness_map(stiffness_map)
-    poserig.hide_constraints()
-
-
-def GenesisRig3(poserig):
-    braid_dof = 65.0
-    poserig.build_chain("braid.R", "head", "FTBraids-skinInstance", bone_size=0.17, bone_dof=(braid_dof, braid_dof, braid_dof))
-    poserig.build_chain("braid.L", "head", "FTBraids-skinInstance", bone_size=0.17, bone_dof=(braid_dof, braid_dof, braid_dof))
-    poserig.build_chain("earring.R", "head", "LEarring_3_11775.001", bone_size=0.1, bone_dof=(braid_dof, braid_dof, braid_dof))
-    poserig.build_chain("earring.L", "head", "LEarring_3_11775",     bone_size=0.1, bone_dof=(braid_dof, braid_dof, braid_dof))
-    poserig.build_chain("sword", "pelvis", "Sword_Centre_4713", bone_size=0.1, bone_dof=(180, 180, 180))
-    poserig.apply_stiffness_map(stiffness_map)
-custom_template['GenesisRig3'] = GenesisRig3
-custom_template['GenesisRig1'] = GenesisRig1
-
 
 def get_armature():
     if type(bpy.context.scene.objects.active.data) == bpy.types.Mesh:
@@ -535,10 +536,18 @@ def get_armature_from_mesh(mesh_object):
     return None
 
 
+def get_poserig():
+    ob = get_armature()
+    poserig = PhysPoseRig(ob)
+    poserig.deserialize(ob.phys_pose_data)
+    return poserig
+
+
 def create_rig():
     bpy.ops.object.mode_set(mode='OBJECT')
     shrink_wrap_name = None
     ob = get_armature()
+    ob.phys_pose_data = ""
     if type(bpy.context.scene.objects.active.data) == bpy.types.Mesh:
         mesh_object = bpy.context.scene.objects.active
         shrink_wrap_name = mesh_object.name
@@ -552,23 +561,165 @@ def create_rig():
     poserig = PhysPoseRig(bpy.data.objects[armature_name])
     poserig.clear_constraints()
     poserig.create_rig(shrink_wrap_name)
-    if armature_name in custom_template:
-        custom_template[armature_name](poserig)
+    if custom_template is not None and armature_name in custom_template.templates:
+        custom_template.templates[armature_name](poserig)
     poserig.hide_constraints()
+    poserig.apply_stiffness_map(stiffness_map)
     rigs[armature_name] = poserig
     ob.phys_pose_data = rigs[armature_name].serialize()
+    return True, "Success"
 
-def load_rig(json_data):
-    data = json.loads(json_data)
-    ob = bpy.data.objects[data['armature']]
-    poserig = PhysPoseRig(ob)
-    poserig.deserialize(json_data)
-    return poserig
 
-physpose_data = """{"constraints": [{"phys_object2": "PHYS-GenesisRig1-abdomenLower", "phys_object1": "PHYS-GenesisRig1-pelvis", "parameters": [-20, 35, -15, 15, -15, 15, true], "bone_constraint": "JOINT-GenesisRig1-pelvis-abdomenLower"}, {"phys_object2": "PHYS-GenesisRig1-abdomenUpper", "phys_object1": "PHYS-GenesisRig1-abdomenLower", "parameters": [-25, 40, -20, 20, -24, 24, true], "bone_constraint": "JOINT-GenesisRig1-abdomenLower-abdomenUpper"}, {"phys_object2": "PHYS-GenesisRig1-chestLower", "phys_object1": "PHYS-GenesisRig1-abdomenUpper", "parameters": [-25, 35, -12, 12, -20, 20, true], "bone_constraint": "JOINT-GenesisRig1-abdomenUpper-chestLower"}, {"phys_object2": "PHYS-GenesisRig1-chestUpper", "phys_object1": "PHYS-GenesisRig1-chestLower", "parameters": [-15, 15, -10, 10, -10, 10, true], "bone_constraint": "JOINT-GenesisRig1-chestLower-chestUpper"}, {"phys_object2": "PHYS-GenesisRig1-neckLower", "phys_object1": "PHYS-GenesisRig1-chestUpper", "parameters": [-15, 30, -22, 22, -40, 40, true], "bone_constraint": "JOINT-GenesisRig1-chestUpper-neckLower"}, {"phys_object2": "PHYS-GenesisRig1-neckUpper", "phys_object1": "PHYS-GenesisRig1-neckLower", "parameters": [-17, 12, -22, 22, -10, 10, true], "bone_constraint": "JOINT-GenesisRig1-neckLower-neckUpper"}, {"phys_object2": "PHYS-GenesisRig1-head", "phys_object1": "PHYS-GenesisRig1-neckUpper", "parameters": [-27, 25, -22, 22, -20, 20, true], "bone_constraint": "JOINT-GenesisRig1-neckUpper-head"}, {"phys_object2": "PHYS-GenesisRig1-Collar.L", "phys_object1": "PHYS-GenesisRig1-chestUpper", "parameters": [-26, 17, -30, 30, -10, 50, true], "bone_constraint": "JOINT-GenesisRig1-chestUpper-Collar.L"}, {"phys_object2": "PHYS-GenesisRig1-Collar.R", "phys_object1": "PHYS-GenesisRig1-chestUpper", "parameters": [-17, 26, -30, 30, -50, 10, true], "bone_constraint": "JOINT-GenesisRig1-chestUpper-Collar.R"}, {"phys_object2": "PHYS-GenesisRig1-ShldrBend.L", "phys_object1": "PHYS-GenesisRig1-Collar.L", "parameters": [-85, 35, 0, 0, -110, 40, true], "bone_constraint": "JOINT-GenesisRig1-Collar.L-ShldrBend.L"}, {"phys_object2": "PHYS-GenesisRig1-ShldrBend.R", "phys_object1": "PHYS-GenesisRig1-Collar.R", "parameters": [-35, 85, 0, 0, -40, 110, true], "bone_constraint": "JOINT-GenesisRig1-Collar.R-ShldrBend.R"}, {"phys_object2": "PHYS-GenesisRig1-ThighBend.L", "phys_object1": "PHYS-GenesisRig1-pelvis", "parameters": [-115, 35, -20, 20, -85, 20, true], "bone_constraint": "JOINT-GenesisRig1-pelvis-ThighBend.L"}, {"phys_object2": "PHYS-GenesisRig1-ThighBend.R", "phys_object1": "PHYS-GenesisRig1-pelvis", "parameters": [-115, 35, -20, 20, -25, 85, true], "bone_constraint": "JOINT-GenesisRig1-pelvis-ThighBend.R"}, {"phys_object2": "PHYS-GenesisRig1-ThighTwist.L", "phys_object1": "PHYS-GenesisRig1-ThighBend.L", "parameters": [0, 0, -55, 55, 0, 0, true], "bone_constraint": "JOINT-GenesisRig1-ThighBend.L-ThighTwist.L"}, {"phys_object2": "PHYS-GenesisRig1-ThighTwist.R", "phys_object1": "PHYS-GenesisRig1-ThighBend.R", "parameters": [0, 0, -55, 55, 0, 0, true], "bone_constraint": "JOINT-GenesisRig1-ThighBend.R-ThighTwist.R"}, {"phys_object2": "PHYS-GenesisRig1-ShldrTwist.L", "phys_object1": "PHYS-GenesisRig1-ShldrBend.L", "parameters": [0, 0, -95, 80, 0, 0, true], "bone_constraint": "JOINT-GenesisRig1-ShldrBend.L-ShldrTwist.L"}, {"phys_object2": "PHYS-GenesisRig1-ShldrTwist.R", "phys_object1": "PHYS-GenesisRig1-ShldrBend.R", "parameters": [0, 0, -95, 80, 0, 0, true], "bone_constraint": "JOINT-GenesisRig1-ShldrBend.R-ShldrTwist.R"}, {"phys_object2": "PHYS-GenesisRig1-ForearmTwist.L", "phys_object1": "PHYS-GenesisRig1-ForearmBend.L", "parameters": [0, 0, -90, 80, 0, 0, true], "bone_constraint": "JOINT-GenesisRig1-ForearmBend.L-ForearmTwist.L"}, {"phys_object2": "PHYS-GenesisRig1-ForearmTwist.R", "phys_object1": "PHYS-GenesisRig1-ForearmBend.R", "parameters": [0, 0, -90, 80, 0, 0, true], "bone_constraint": "JOINT-GenesisRig1-ForearmBend.R-ForearmTwist.R"}, {"phys_object2": "PHYS-GenesisRig1-Shin.R", "phys_object1": "PHYS-GenesisRig1-ThighTwist.R", "parameters": [0, 0, -12, 12, 0, 140, true], "bone_constraint": "JOINT-GenesisRig1-ThighTwist.R-Shin.R"}, {"phys_object2": "PHYS-GenesisRig1-Shin.L", "phys_object1": "PHYS-GenesisRig1-ThighTwist.L", "parameters": [0, 0, -12, 12, -140, 0, true], "bone_constraint": "JOINT-GenesisRig1-ThighTwist.L-Shin.L"}, {"phys_object2": "PHYS-GenesisRig1-ForearmBend.R", "phys_object1": "PHYS-GenesisRig1-ShldrTwist.R", "parameters": [-135, 20, 0, 0, 0, 0, true], "bone_constraint": "JOINT-GenesisRig1-ShldrTwist.R-ForearmBend.R"}, {"phys_object2": "PHYS-GenesisRig1-ForearmBend.L", "phys_object1": "PHYS-GenesisRig1-ShldrTwist.L", "parameters": [-135, 20, 0, 0, 0, 0, true], "bone_constraint": "JOINT-GenesisRig1-ShldrTwist.L-ForearmBend.L"}, {"phys_object2": "PHYS-GenesisRig1-Hand.L", "phys_object1": "PHYS-GenesisRig1-ForearmTwist.L", "parameters": [-40, 40, -40, 40, -90, 90, true], "bone_constraint": "JOINT-GenesisRig1-ForearmTwist.L-Hand.L"}, {"phys_object2": "PHYS-GenesisRig1-Hand.R", "phys_object1": "PHYS-GenesisRig1-ForearmTwist.R", "parameters": [-40, 40, -40, 40, -90, 90, true], "bone_constraint": "JOINT-GenesisRig1-ForearmTwist.R-Hand.R"}, {"phys_object2": "PHYS-GenesisRig1-Foot.L", "phys_object1": "PHYS-GenesisRig1-Shin.L", "parameters": [-75, 40, -12, 12, -10, 10, true], "bone_constraint": "JOINT-GenesisRig1-Shin.L-Foot.L"}, {"phys_object2": "PHYS-GenesisRig1-Foot.R", "phys_object1": "PHYS-GenesisRig1-Shin.R", "parameters": [-75, 40, -12, 12, -10, 10, true], "bone_constraint": "JOINT-GenesisRig1-Shin.R-Foot.R"}, {"phys_object2": "PHYS-GenesisRig1-Index1.R", "phys_object1": "PHYS-GenesisRig1-Hand.R", "parameters": [-5, 5, -2, 2, -60, 5, true], "bone_constraint": "JOINT-GenesisRig1-Hand.R-Index1.R"}, {"phys_object2": "PHYS-GenesisRig1-Mid1.R", "phys_object1": "PHYS-GenesisRig1-Hand.R", "parameters": [-5, 5, -2, 2, -60, 5, true], "bone_constraint": "JOINT-GenesisRig1-Hand.R-Mid1.R"}, {"phys_object2": "PHYS-GenesisRig1-Ring1.R", "phys_object1": "PHYS-GenesisRig1-Hand.R", "parameters": [-5, 5, -2, 2, -60, 5, true], "bone_constraint": "JOINT-GenesisRig1-Hand.R-Ring1.R"}, {"phys_object2": "PHYS-GenesisRig1-Pinky1.R", "phys_object1": "PHYS-GenesisRig1-Hand.R", "parameters": [-5, 5, -2, 2, -60, 5, true], "bone_constraint": "JOINT-GenesisRig1-Hand.R-Pinky1.R"}, {"phys_object2": "PHYS-GenesisRig1-Thumb2.R", "phys_object1": "PHYS-GenesisRig1-Hand.R", "parameters": [-30, 30, -30, 30, -30, 30, true], "bone_constraint": "JOINT-GenesisRig1-Hand.R-Thumb2.R"}, {"phys_object2": "PHYS-GenesisRig1-Index1.L", "phys_object1": "PHYS-GenesisRig1-Hand.L", "parameters": [-5, 5, -2, 2, -5, 60, true], "bone_constraint": "JOINT-GenesisRig1-Hand.L-Index1.L"}, {"phys_object2": "PHYS-GenesisRig1-Mid1.L", "phys_object1": "PHYS-GenesisRig1-Hand.L", "parameters": [-5, 5, -2, 2, -5, 60, true], "bone_constraint": "JOINT-GenesisRig1-Hand.L-Mid1.L"}, {"phys_object2": "PHYS-GenesisRig1-Ring1.L", "phys_object1": "PHYS-GenesisRig1-Hand.L", "parameters": [-5, 5, -2, 2, -5, 60, true], "bone_constraint": "JOINT-GenesisRig1-Hand.L-Ring1.L"}, {"phys_object2": "PHYS-GenesisRig1-Pinky1.L", "phys_object1": "PHYS-GenesisRig1-Hand.L", "parameters": [-5, 5, -2, 2, -5, 60, true], "bone_constraint": "JOINT-GenesisRig1-Hand.L-Pinky1.L"}, {"phys_object2": "PHYS-GenesisRig1-Thumb2.L", "phys_object1": "PHYS-GenesisRig1-Hand.L", "parameters": [-30, 30, -30, 30, -30, 30, true], "bone_constraint": "JOINT-GenesisRig1-Hand.L-Thumb2.L"}, {"phys_object2": "PHYS-GenesisRig1-genitals.004", "phys_object1": "PHYS-GenesisRig1-genitals", "parameters": [-6.0, 6.0, -6.0, 6.0, -6.0, 6.0, true], "bone_constraint": "JOINT-GenesisRig1-genitals-genitals.004"}, {"phys_object2": "PHYS-GenesisRig1-genitals.002", "phys_object1": "PHYS-GenesisRig1-genitals.004", "parameters": [-6.0, 6.0, -6.0, 6.0, -6.0, 6.0, true], "bone_constraint": "JOINT-GenesisRig1-genitals.004-genitals.002"}, {"phys_object2": "PHYS-GenesisRig1-genitals.006", "phys_object1": "PHYS-GenesisRig1-genitals.002", "parameters": [-6.0, 6.0, -6.0, 6.0, -6.0, 6.0, true], "bone_constraint": "JOINT-GenesisRig1-genitals.002-genitals.006"}, {"phys_object2": "PHYS-GenesisRig1-genitals.001", "phys_object1": "PHYS-GenesisRig1-genitals.006", "parameters": [-6.0, 6.0, -6.0, 6.0, -6.0, 6.0, true], "bone_constraint": "JOINT-GenesisRig1-genitals.006-genitals.001"}, {"phys_object2": "PHYS-GenesisRig1-genitals.005", "phys_object1": "PHYS-GenesisRig1-genitals.001", "parameters": [-6.0, 6.0, -6.0, 6.0, -6.0, 6.0, true], "bone_constraint": "JOINT-GenesisRig1-genitals.001-genitals.005"}, {"phys_object2": "PHYS-GenesisRig1-genitals.003", "phys_object1": "PHYS-GenesisRig1-genitals.005", "parameters": [-6.0, 6.0, -6.0, 6.0, -6.0, 6.0, true], "bone_constraint": "JOINT-GenesisRig1-genitals.005-genitals.003"}, {"phys_object2": "PHYS-GenesisRig1-genitals.007", "phys_object1": "PHYS-GenesisRig1-genitals.003", "parameters": [-6.0, 6.0, -6.0, 6.0, -6.0, 6.0, true], "bone_constraint": "JOINT-GenesisRig1-genitals.003-genitals.007"}, {"phys_object2": "PHYS-GenesisRig1-genitals", "phys_object1": "PHYS-GenesisRig1-pelvis", "parameters": [-6.0, 6.0, -6.0, 6.0, -6.0, 6.0, true], "bone_constraint": "JOINT-GenesisRig1-pelvis-genitals"}], "phys_objects": [{"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Thumb2.L", "pose_bone": "Thumb2.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-head", "pose_bone": "head"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Foot.L", "pose_bone": "Foot.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Collar.L", "pose_bone": "Collar.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ForearmBend.R", "pose_bone": "ForearmBend.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Ring1.R", "pose_bone": "Ring1.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Collar.R", "pose_bone": "Collar.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ForearmBend.L", "pose_bone": "ForearmBend.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-chestLower", "pose_bone": "chestLower"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Thumb2.R", "pose_bone": "Thumb2.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-neckUpper", "pose_bone": "neckUpper"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ForearmTwist.L", "pose_bone": "ForearmTwist.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ShldrBend.L", "pose_bone": "ShldrBend.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ShldrBend.R", "pose_bone": "ShldrBend.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-pelvis", "pose_bone": "pelvis"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ThighTwist.L", "pose_bone": "ThighTwist.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Shin.R", "pose_bone": "Shin.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ThighBend.R", "pose_bone": "ThighBend.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Mid1.R", "pose_bone": "Mid1.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Hand.L", "pose_bone": "Hand.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Index1.R", "pose_bone": "Index1.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Pinky1.R", "pose_bone": "Pinky1.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Index1.L", "pose_bone": "Index1.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-chestUpper", "pose_bone": "chestUpper"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ForearmTwist.R", "pose_bone": "ForearmTwist.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ThighTwist.R", "pose_bone": "ThighTwist.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ShldrTwist.R", "pose_bone": "ShldrTwist.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-abdomenLower", "pose_bone": "abdomenLower"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Hand.R", "pose_bone": "Hand.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Foot.R", "pose_bone": "Foot.R"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Mid1.L", "pose_bone": "Mid1.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Shin.L", "pose_bone": "Shin.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-abdomenUpper", "pose_bone": "abdomenUpper"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ThighBend.L", "pose_bone": "ThighBend.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Pinky1.L", "pose_bone": "Pinky1.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-neckLower", "pose_bone": "neckLower"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-ShldrTwist.L", "pose_bone": "ShldrTwist.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-Ring1.L", "pose_bone": "Ring1.L"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-genitals", "pose_bone": "genitals"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-genitals.004", "pose_bone": "genitals.004"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-genitals.002", "pose_bone": "genitals.002"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-genitals.006", "pose_bone": "genitals.006"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-genitals.001", "pose_bone": "genitals.001"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-genitals.005", "pose_bone": "genitals.005"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-genitals.003", "pose_bone": "genitals.003"}, {"armature": "GenesisRig1", "phys_object": "PHYS-GenesisRig1-genitals.007", "pose_bone": "genitals.007"}], "armature": "GenesisRig1"}"""
+class GeneratePhysPoseRig(bpy.types.Operator):
+    bl_idname = "object.generate_physpose_rig"
+    bl_label = "Generate PhysPose Rig"
+    bl_options = {'REGISTER', 'UNDO'}
+    def execute(self, context):
+        success, message = create_rig()
+        if not success:
+            self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
+class DeletePhysPoseRig(bpy.types.Operator):
+    bl_idname = "object.delete_physpose_rig"
+    bl_label = "Delete PhysPose Rig"
+    bl_options = {'REGISTER', 'UNDO'}
+    def execute(self, context):
+        poserig = get_poserig()
+        poserig.delete_rig()
+        success, message = (True, "Success")
+        if not success:
+            self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
+class PinPhysObject(bpy.types.Operator):
+    bl_idname = "object.pin_phys_object"
+    bl_label = "PinPhysObject"
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode='OBJECT')
+        for o in bpy.context.selected_objects:
+            if hasattr(o, 'rigid_body'):
+                matrix = o.matrix_world
+                o.rigid_body.kinematic = True
+                o.matrix_world = matrix
+        success, message = (True, "Success")
+        if not success:
+            self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
+class UnpinPhysObject(bpy.types.Operator):
+    bl_idname = "object.unpin_phys_object"
+    bl_label = "PinPhysObject"
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode='OBJECT')
+        for o in bpy.context.selected_objects:
+            if hasattr(o, 'rigid_body'):
+                o.rigid_body.kinematic = False
+        success, message = (True, "Success")
+        if not success:
+            self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
+class ResetPhysPoseRig(bpy.types.Operator):
+    bl_idname = "object.reset_physpose_rig"
+    bl_label = "Reset PhysPose Rig"
+    def execute(self, context):
+        poserig = get_poserig()
+        success, message = poserig.restore_physpose_rig()
+        if not success:
+            self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
+class SetDampingPhysPoseRig(bpy.types.Operator):
+    bl_idname = "object.set_damping_physpose_rig"
+    bl_label = "SetDampingPhysPoseRig"
+    def execute(self, context):
+        poserig = get_poserig()
+        armature = get_armature()
+        damping_setting = armature.phys_pose_damping
+        for phys_object in poserig.phys_objects:
+            phys_object.phys_object.rigid_body.angular_damping = damping_setting
+            phys_object.phys_object.rigid_body.linear_damping = damping_setting
+        success, message = (True, "Success")
+        if not success:
+            self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
+class PhysPosePanel(bpy.types.Panel):
+    bl_label = "PhysPose Tools"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+
+    def draw(self, context):
+        ob = context.object
+        layout = self.layout
+
+        layout.operator("object.generate_physpose_rig", text='Generate PhysPose Rig')
+        if ob.phys_pose_data != '':
+            layout.operator("object.delete_physpose_rig", text='Delete PhysPose Rig')
+            #layout.label("Keyframe Tools")
+            #layout.operator("object.set_rotations_physpose_rig", text='Apply PhysPose to Rig')
+            #layout.operator("object.unmute_constraints_physpose_rig", text='Unmute Constraints on PhysPose Rig')
+            layout.label("Set Damping")
+            row = layout.row()
+            row.prop(ob, 'phys_pose_damping', slider=True)
+            row.operator("object.set_damping_physpose_rig", text='Set Damping')
+            #row2 = layout.row()
+            #row2.prop(ob, 'phys_pose_spine_stiffness', slider=True)
+            #row2.operator("object.set_spine_stiffness_physpose_rig", text='Set Spine Stiffness')
+        layout.label("PhysRig Tools")
+        if ob.phys_pose_data != '':
+            layout.operator("object.reset_physpose_rig", text='Reset PhysPose Rig to Base Pose')
+        layout.operator("object.pin_phys_object", text='Pin Object(s)')
+        layout.operator("object.unpin_phys_object", text='Unpin Object(s)')
+
+
+def register():
+    bpy.utils.register_class(GeneratePhysPoseRig)
+    bpy.utils.register_class(DeletePhysPoseRig)
+    #bpy.utils.register_class(SetRotationsPhysPoseRig)
+    #bpy.utils.register_class(UnmuteConstraintsPhysPoseRig)
+    bpy.utils.register_class(SetDampingPhysPoseRig)
+    bpy.utils.register_class(PinPhysObject)
+    bpy.utils.register_class(UnpinPhysObject)
+    bpy.utils.register_class(ResetPhysPoseRig)
+    #bpy.utils.register_class(SetSpineStiffnessPhysPoseRig)
+
+    bpy.utils.register_class(PhysPosePanel)
+    bpy.types.Object.phys_pose_data = bpy.props.StringProperty(name = "PhysPoseData")
+    bpy.types.Object.phys_pose_damping = bpy.props.FloatProperty(name = "PhysPoseDamping", default=1.0, min=0.0, max=1.0)
+    bpy.types.Object.phys_pose_spine_stiffness = bpy.props.FloatProperty(name = "PhysPoseSpineStiffness", default=1.0, min=0.0, max=1.0)
+
+
+def unregister():
+    bpy.utils.unregister_class(GeneratePhysPoseRig)
+    bpy.utils.unregister_class(DeletePhysPoseRig)
+    #bpy.utils.unregister_class(SetRotationsPhysPoseRig)
+    #bpy.utils.unregister_class(UnmuteConstraintsPhysPoseRig)
+    bpy.utils.unregister_class(SetDampingPhysPoseRig)
+    bpy.utils.unregister_class(PinPhysObject)
+    bpy.utils.unregister_class(UnpinPhysObject)
+    bpy.utils.unregister_class(ResetPhysPoseRig)
+    #bpy.utils.unregister_class(SetSpineStiffnessPhysPoseRig)
+
+    bpy.utils.unregister_class(PhysPosePanel)
+    del bpy.types.Object.phys_pose_data
+    del bpy.types.Object.phys_pose_damping
+    del bpy.types.Object.phys_pose_spine_stiffness
+
+
+if __name__ == "__main__":
+    register()
+
+
+
 #create_rig()
-poserig = load_rig(physpose_data)
-poserig.delete_rig()
 
 #rigmap = [['GenesisRig3', 'Genesis3Female.002'], ['GenesisRig1', 'Genesis3Female']]
 #for rigname, meshname in rigmap:
