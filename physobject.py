@@ -343,6 +343,7 @@ class PhysPoseRig():
 
         self.phys_objects += phys_objects
         self.constraints += constraints
+        self.set_rest_matrix()
 
     def hide_constraints(self):
         for con in self.constraints:
