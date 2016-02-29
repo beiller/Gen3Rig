@@ -316,7 +316,7 @@ class PhysPoseRig():
             if attach_bone_name == phys.phys_object.name.split('-')[2]:
                 attach_phys = phys
         if attach_phys:
-            constraints.append( Constraint(phys_objects[0], attach_phys, constraint_parameters) )
+            constraints.append( Constraint(attach_phys, phys_objects[0], constraint_parameters) )
         else:
             print("Unable to find physobject ", attach_bone_name)
 
@@ -390,8 +390,8 @@ class PhysPoseRig():
             [ 'neckUpper', 'head', [-27,25,-22,22,-20,20,True] ],
             [ 'chestUpper', 'Collar.L', [-26,17,-30,30,-10,50,True] ],
             [ 'chestUpper', 'Collar.R', [-17,26,-30,30,-50,10,True] ],
-            [ 'Collar.L', 'ShldrBend.L', [-85,35,0,0,-110,110,True] ],
-            [ 'Collar.R', 'ShldrBend.R', [-35,85,0,0,-110,110,True] ],
+            [ 'Collar.L', 'ShldrBend.L', [-85,35,0,0,-110,40,True] ],
+            [ 'Collar.R', 'ShldrBend.R', [-35,85,0,0,-40,110,True] ],
             [ 'pelvis', 'ThighBend.L', [-115,35,-20,20,-85,20,True] ],
             [ 'pelvis', 'ThighBend.R', [-115,35,-20,20,-25,85,True] ],
             [ 'ThighBend.L', 'ThighTwist.L', [0,0,-55,55,0,0,True] ],
@@ -471,6 +471,10 @@ def rig2():
     poserig.create_rig("Genesis3Female.002")
     poserig.build_chain("braid.R", "head", "FTBraids-skinInstance", bone_size=0.17, bone_dof=(braid_dof, braid_dof, braid_dof))
     poserig.build_chain("braid.L", "head", "FTBraids-skinInstance", bone_size=0.17, bone_dof=(braid_dof, braid_dof, braid_dof))
+    poserig.build_chain("earring.R", "head", "LEarring_3_11775.001", bone_size=0.1, bone_dof=(braid_dof, braid_dof, braid_dof))
+    poserig.build_chain("earring.L", "head", "LEarring_3_11775",     bone_size=0.1, bone_dof=(braid_dof, braid_dof, braid_dof))
+    poserig.build_chain("sword", "pelvis", "Sword_Centre_4713", bone_size=0.1, bone_dof=(180, 180, 180))
+    
     poserig.apply_stiffness_map(stiffness_map)
     poserig.hide_constraints()
     rigs.append(poserig)
@@ -485,3 +489,15 @@ for rig in rigmap:
     rigmap[rig]()
 
 #rigs[0].set_rotations((1.0, 0.0, 0.0), ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"])
+"""
+def draw_phys_as(type):
+  for obj in bpy.data.objects:
+    if obj.name[0:4] == 'PHYS':
+        obj.draw_type = type
+for obj in bpy.data.objects:
+    print(obj.name)
+    if obj.name[0:5] == 'JOINT':
+        print(obj.name)
+        obj.hide = True
+draw_phys_as('TEXTURED')
+"""
