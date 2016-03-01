@@ -2,6 +2,7 @@ import bpy
 import math
 from mathutils import Vector, Matrix
 import json
+import imp
 
 try:
     from . import custom_template
@@ -589,7 +590,7 @@ def create_rig():
     poserig.clear_constraints()
     poserig.create_rig(shrink_wrap_name)
     if custom_template is not None and armature_name in custom_template.templates:
-        reload(custom_template)
+        imp.reload(custom_template)
         custom_template.templates[armature_name](poserig)
     poserig.hide_constraints()
     poserig.apply_stiffness_map(stiffness_map)
