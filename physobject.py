@@ -316,12 +316,14 @@ class PhysPoseRig():
             return False
 
         phys_objects = []
-        phys_objects.append( PhysObject(self.armature, self.armature.pose.bones[start_bone_name], None, shrinkwrap_name) )
-        def build_recurse(bone, phys_objects):
+        phys_objects.append(PhysObject(self.armature, self.armature.pose.bones[start_bone_name], None, shrinkwrap_name))
+
+        def build_recurse(bone, phys_objects, counter, max_depth):
             for child in bone.children:
-                phys_objects.append( PhysObject(self.armature, child, None, shrinkwrap_name) )
-                build_recurse(child, phys_objects)
-        build_recurse(self.armature.pose.bones[start_bone_name], phys_objects)
+                phys_objects.append(PhysObject(self.armature, child, [bone_size, bone_size], shrinkwrap_name))
+                if counter < max_depth:
+                    build_recurse(child, phys_objects, counter+1, max_depth)
+        build_recurse(self.armature.pose.bones[start_bone_name], phys_objects, 0, chain_length)
 
         constraints = []
         #BUILD CONSTRAINTS
@@ -387,15 +389,28 @@ class PhysPoseRig():
             "Foot.L" : [0.16, 0.22, 0.09, (0, -0.061, 0.055)],
             "Foot.R" : [0.16, 0.22, 0.09, (0, -0.061, 0.055)],
             #HAND BONES ----------------------------------------------------
-            "Index1.R" : [0.015, 0.015, 0.08, (0, 0.012, 0) ],
-            "Mid1.R" : [0.015, 0.015, 0.08, (0, 0.012, 0) ],
-            "Ring1.R" : [0.015, 0.015, 0.08, (0, 0.012, 0) ],
-            "Pinky1.R" : [0.011, 0.011, 0.06, (0, 0.012, 0) ],
+            "Index1.R" : [0.015, 0.015, None, (0, 0.012, 0) ],
+            "Mid1.R" : [0.015, 0.015, None, (0, 0.012, 0) ],
+            "Ring1.R" : [0.015, 0.015, None, (0, 0.012, 0) ],
+            "Pinky1.R" : [0.011, 0.011, None, (0, 0.012, 0) ],
+            "Thumb1.R" : [0.015, 0.015, None, (0, 0.012, 0) ],
+
+            "Index1.L" : [0.015, 0.015, None, (0, 0.012, 0) ],
+            "Mid1.L" : [0.015, 0.015, None, (0, 0.012, 0) ],
+            "Ring1.L" : [0.015, 0.015, None, (0, 0.012, 0) ],
+            "Pinky1.L" : [0.011, 0.011, None, (0, 0.012, 0) ],
+            "Thumb1.L" : [0.015, 0.015, None, (0, 0.012, 0) ],
+
+            "Index2.R" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
+            "Mid2.R" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
+            "Ring2.R" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
+            "Pinky2.R" : [0.011, 0.011, 0.03, (0, 0.012, 0) ],
             "Thumb2.R" : [0.015, 0.015, 0.08, (0, 0.012, 0) ],
-            "Index1.L" : [0.015, 0.015, 0.08, (0, 0.012, 0) ],
-            "Mid1.L" : [0.015, 0.015, 0.08, (0, 0.012, 0) ],
-            "Ring1.L" : [0.015, 0.015, 0.08, (0, 0.012, 0) ],
-            "Pinky1.L" : [0.011, 0.011, 0.06, (0, 0.012, 0) ],
+
+            "Index2.L" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
+            "Mid2.L" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
+            "Ring2.L" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
+            "Pinky2.L" : [0.011, 0.011, 0.03, (0, 0.012, 0) ],
             "Thumb2.L" : [0.015, 0.015, 0.08, (0, 0.012, 0) ]
         }
 
@@ -409,8 +424,8 @@ class PhysPoseRig():
             [ 'neckUpper', 'head', [-27,25,-22,22,-20,20,True] ],
             [ 'chestUpper', 'Collar.L', [-26,17,-30,30,-10,50,True] ],
             [ 'chestUpper', 'Collar.R', [-17,26,-30,30,-50,10,True] ],
-            [ 'Collar.L', 'ShldrBend.L', [-85,35,0,0,-110,40,True] ],
-            [ 'Collar.R', 'ShldrBend.R', [-35,85,0,0,-40,110,True] ],
+            [ 'Collar.L', 'ShldrBend.L', [-135,70,0,0,-110,110,True] ],
+            [ 'Collar.R', 'ShldrBend.R', [-70,135,0,0,-110,110,True] ],
             [ 'pelvis', 'ThighBend.L', [-115,35,-20,20,-85,20,True] ],
             [ 'pelvis', 'ThighBend.R', [-115,35,-20,20,-25,85,True] ],
             [ 'ThighBend.L', 'ThighTwist.L', [0,0,-55,55,0,0,True] ],
@@ -432,12 +447,23 @@ class PhysPoseRig():
             [ 'Hand.R', 'Mid1.R', [-5,5,-2,2,-60,5,True] ],
             [ 'Hand.R', 'Ring1.R', [-5,5,-2,2,-60,5,True] ],
             [ 'Hand.R', 'Pinky1.R', [-5,5,-2,2,-60,5,True] ],
-            [ 'Hand.R', 'Thumb2.R', [-30,30,-30,30,-30,30,True] ],
+            [ 'Hand.R', 'Thumb1.R', [-5,5,-30,30,-30,30,True] ],
             [ 'Hand.L', 'Index1.L', [-5,5,-2,2,-5,60,True] ],
             [ 'Hand.L', 'Mid1.L', [-5,5,-2,2,-5,60,True] ],
             [ 'Hand.L', 'Ring1.L', [-5,5,-2,2,-5,60,True] ],
             [ 'Hand.L', 'Pinky1.L', [-5,5,-2,2,-5,60,True] ],
-            [ 'Hand.L', 'Thumb2.L', [-30,30,-30,30,-30,30,True] ]
+            [ 'Hand.L', 'Thumb1.L', [-5,5,-30,30,-30,30,True] ],
+
+            [ 'Index1.R', 'Index2.R', [-5,5,-2,2,-60,5,True] ],
+            [ 'Mid1.R', 'Mid2.R', [-5,5,-2,2,-60,5,True] ],
+            [ 'Ring1.R', 'Ring2.R', [-5,5,-2,2,-60,5,True] ],
+            [ 'Pinky1.R', 'Pinky2.R', [-5,5,-2,2,-60,5,True] ],
+            [ 'Thumb1.R', 'Thumb2.R', [-20,20,-20,20,-20,20,True] ],
+            [ 'Index1.L', 'Index2.L', [-5,5,-2,2,-5,60,True] ],
+            [ 'Mid1.L', 'Mid2.L', [-5,5,-2,2,-5,60,True] ],
+            [ 'Ring1.L', 'Ring2.L', [-5,5,-2,2,-5,60,True] ],
+            [ 'Pinky1.L', 'Pinky2.L', [-5,5,-2,2,-5,60,True] ],
+            [ 'Thumb1.L', 'Thumb2.L', [-20,20,-20,20,-20,20,True] ]
         ]
         self.shrinkwrap_object_name = shrinkwrap_object_name
         phys_map = {}
