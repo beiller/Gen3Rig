@@ -9,12 +9,13 @@ try:
 except ImportError:
     custom_template = None
 
+
 class PhysObject():
-    def __init__(self, armature, pose_bone, parameters = None, shrinkwrap_object_name = None):
+    def __init__(self, armature, pose_bone, parameters=None, shrinkwrap_object_name=None, density=1100):
         self.armature = armature
         self.pose_bone = pose_bone
         self.phys_object = None
-
+        self.density = density
         # If objects already exist, load them up and bypass creation
         if self.get_name() in bpy.data.objects:
             self.phys_object = bpy.data.objects[self.get_name()]
@@ -103,7 +104,7 @@ class PhysObject():
         self.phys_object.select = True
         bpy.context.scene.objects.active = self.phys_object
         bpy.ops.rigidbody.objects_add(type='ACTIVE')
-        bpy.ops.rigidbody.mass_calculate(density=1100) #1.1g/m^3
+        bpy.ops.rigidbody.mass_calculate(density=self.density) #1.1g/m^3
         self.phys_object.rigid_body.angular_damping = 0.75
         self.phys_object.rigid_body.linear_damping = 0.75
         self.phys_object.rigid_body.use_margin = True
@@ -312,7 +313,7 @@ class PhysPoseRig():
                         and 'PHYSPOSE-COPY-LOCATION' in con.name or 'PHYSPOSE-COPY-ROTATION' in con.name:
                     bone.constraints.remove(con)
 
-    def build_chain(self, start_bone_name, attach_bone_name, shrinkwrap_name = None, chain_length=90, bone_size=0.1, bone_dof=(2, 2, 2)):
+    def build_chain(self, start_bone_name, attach_bone_name, shrinkwrap_name=None, chain_length=90, bone_size=0.1, bone_dof=(2, 2, 2), density=1100):
         if start_bone_name not in self.armature.pose.bones:
             return False
 
@@ -321,7 +322,7 @@ class PhysPoseRig():
 
         def build_recurse(bone, phys_objects, counter, max_depth):
             for child in bone.children:
-                phys_objects.append(PhysObject(self.armature, child, [bone_size, bone_size], shrinkwrap_name))
+                phys_objects.append(PhysObject(self.armature, child, [bone_size, bone_size], shrinkwrap_name, density))
                 if counter < max_depth:
                     build_recurse(child, phys_objects, counter+1, max_depth)
         build_recurse(self.armature.pose.bones[start_bone_name], phys_objects, 0, chain_length)
@@ -478,6 +479,20 @@ class PhysPoseRig():
             con = Constraint(phys_map[bone_name1], phys_map[bone_name2], parameters)
             self.constraints.append(con)
 
+        collision_group_ext = [
+            'ShldrBend.L',
+            'ShldrBend.R'
+        ]
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        for phys_obj in self.phys_objects:
+            #PHYS-GenesisRig3-Foot.L
+            mybone = phys_obj.get_name().split('-')[-1]
+            if mybone in collision_group_ext:
+                number_of_layers = len(phys_obj.phys_object.rigid_body.collision_groups)
+                phys_obj.phys_object.rigid_body.collision_groups = [i in {1} for i in range(number_of_layers)]
+
+
         minimize_twist = [
             [0.6, ["ShldrBend.R","ShldrTwist.R","ShldrBend.L","ShldrTwist.L"], 25],
             [0.6, ["ThighBend.R","ThighTwist.R","ThighBend.L","ThighTwist.L"], 25],
@@ -488,6 +503,10 @@ class PhysPoseRig():
         return True, "Success"
 
     def delete_rig(self):
+        do_hide = False
+        if self.armature.hide:
+            self.armature.hide = False
+            do_hide = True
         bpy.ops.object.mode_set(mode='OBJECT')
         armature = self.armature
         if not armature:
@@ -520,14 +539,24 @@ class PhysPoseRig():
             bpy.data.objects[name].select = True
 
         bpy.ops.object.delete()
+        if do_hide:
+            self.armature.hide = True
         return True, "Success"
 
     def restore_physpose_rig(self):
+        do_hide = False
+        if self.armature.hide:
+            self.armature.hide = False
+            do_hide = True
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
-        bpy.context.scene.layers = self.armature.layers
+        #oldlayers = bpy.context.scene.layers
+        #bpy.context.scene.layers = self.armature.layers
         for phys_obj in self.phys_objects:
             bpy.data.objects[phys_obj.get_name()].matrix_world = self.rest_phys_matrix[phys_obj.get_name()]
+        #bpy.context.scene.layers = oldlayers
+        if do_hide:
+            self.armature.hide = True
         return True, "Success"
 
 
@@ -538,7 +567,7 @@ def print_total_weight(poserig):
     print("Total weight: ", total)
 
 stiffness_map = [
-    [0.01, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
+    [0.05, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
     [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
     [0.2, ["head","neckUpper"]],
     [0.25, ["chestUpper","Collar.R","Collar.L"]]
@@ -546,13 +575,18 @@ stiffness_map = [
 
 rigs = {}
 
+
 def get_armature():
-    if type(bpy.context.scene.objects.active.data) == bpy.types.Mesh:
+    if bpy.context.scene.objects.active.name[0:4] == 'PHYS':
+        phystype, armature, bone = bpy.context.scene.objects.active.name.split('-')
+        return bpy.data.objects[armature]
+    elif type(bpy.context.scene.objects.active.data) == bpy.types.Mesh:
         #we have the mesh selected, grab the armature
         return get_armature_from_mesh(bpy.context.scene.objects.active)
     elif type(bpy.context.scene.objects.active.data) == bpy.types.Armature:
         #we have the armature selected, use it.
         return bpy.context.scene.objects.active
+
     return None
 
 
@@ -629,7 +663,7 @@ class PinPhysObject(bpy.types.Operator):
     def execute(self, context):
         bpy.ops.object.mode_set(mode='OBJECT')
         for o in bpy.context.selected_objects:
-            if hasattr(o, 'rigid_body'):
+            if hasattr(o, 'rigid_body') and o.rigid_body is not None:
                 matrix = o.matrix_world
                 o.rigid_body.kinematic = True
                 o.matrix_world = matrix
@@ -645,7 +679,7 @@ class UnpinPhysObject(bpy.types.Operator):
     def execute(self, context):
         bpy.ops.object.mode_set(mode='OBJECT')
         for o in bpy.context.selected_objects:
-            if hasattr(o, 'rigid_body'):
+            if hasattr(o, 'rigid_body') and o.rigid_body is not None:
                 o.rigid_body.kinematic = False
         success, message = (True, "Success")
         if not success:
@@ -690,7 +724,8 @@ class PhysPosePanel(bpy.types.Panel):
         layout = self.layout
 
         layout.operator("object.generate_physpose_rig", text='Generate PhysPose Rig')
-        if ob.phys_pose_data != '':
+        armature = get_armature()
+        if armature is not None:
             layout.operator("object.delete_physpose_rig", text='Delete PhysPose Rig')
             #layout.label("Keyframe Tools")
             #layout.operator("object.set_rotations_physpose_rig", text='Apply PhysPose to Rig')
@@ -703,7 +738,7 @@ class PhysPosePanel(bpy.types.Panel):
             #row2.prop(ob, 'phys_pose_spine_stiffness', slider=True)
             #row2.operator("object.set_spine_stiffness_physpose_rig", text='Set Spine Stiffness')
         layout.label("PhysRig Tools")
-        if ob.phys_pose_data != '':
+        if armature is not None:
             layout.operator("object.reset_physpose_rig", text='Reset PhysPose Rig to Base Pose')
         layout.operator("object.pin_phys_object", text='Pin Object(s)')
         layout.operator("object.unpin_phys_object", text='Unpin Object(s)')
