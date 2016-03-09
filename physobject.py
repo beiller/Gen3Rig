@@ -10,6 +10,9 @@ except ImportError:
     custom_template = None
 
 
+from . import template
+
+
 class PhysObject():
     def __init__(self, armature, pose_bone, parameters=None, shrinkwrap_object_name=None, density=1100):
         self.armature = armature
@@ -105,8 +108,8 @@ class PhysObject():
         bpy.context.scene.objects.active = self.phys_object
         bpy.ops.rigidbody.objects_add(type='ACTIVE')
         bpy.ops.rigidbody.mass_calculate(density=self.density) #1.1g/m^3
-        self.phys_object.rigid_body.angular_damping = 0.75
-        self.phys_object.rigid_body.linear_damping = 0.75
+        self.phys_object.rigid_body.angular_damping = 0.5
+        self.phys_object.rigid_body.linear_damping = 0.5
         self.phys_object.rigid_body.use_margin = True
         self.phys_object.rigid_body.collision_margin = 0.001
         sx, sy, sz = self.phys_object.dimensions
@@ -268,7 +271,7 @@ class PhysPoseRig():
         for con in data['constraints']:
             self.constraints.append(Constraint(phys_obj_dict[con['phys_object1']], phys_obj_dict[con['phys_object2']], con['parameters']))
 
-    def __init__(self, armature):
+    def __init__(self, armature, template):
         armature.select = True
         bpy.context.scene.objects.active = armature
         self.armature = armature
@@ -276,6 +279,7 @@ class PhysPoseRig():
         self.constraints = []
         self.shrinkwrap_object_name = None
         self.rest_phys_matrix = {}
+        self.template = template
 
     def set_rest_matrix(self):
         for phys_object in self.phys_objects:
@@ -361,112 +365,9 @@ class PhysPoseRig():
             self.set_stiffness(m[0], m[1], iterations)
 
     def create_rig(self, shrinkwrap_object_name=None, damping=1.0):
-        bones_to_create = {
-            "pelvis" : [0.27, 0.18, None, (0.0, -0.16, -0.02), True],
-            "abdomenLower" : [0.23, 0.17, None, None, True],
-            "abdomenUpper" : [0.23, 0.16],
-            "chestLower" : [0.28, 0.3, 0.13],
-            "chestUpper" : [0.12, 0.20, 0.14],
-            "neckLower" : [0.1, 0.1],
-            "neckUpper" : [0.1, 0.1],
-            "head" : [0.30, 0.30, 0.2],
-            "ThighBend.L" : [0.11, 0.11, None, (0, 0.07, 0) ],
-            "ThighBend.R" : [0.11, 0.11, None, (0, 0.07, 0) ],
-            "ThighTwist.L" : [0.11, 0.11],
-            "ThighTwist.R" : [0.11, 0.11],
-            "Shin.L" : [0.10, 0.10, 0.36],
-            "Shin.R" : [0.10, 0.10, 0.36],
-            "Collar.L" : [0.1, 0.1, 0.1, (0,0.035,0)],
-            "Collar.R" : [0.1, 0.1, 0.1, (0,0.035,0)],
-            "ShldrBend.L" : [0.081, 0.081],
-            "ShldrBend.R" : [0.081, 0.081],
-            "ShldrTwist.L" : [0.081, 0.081],
-            "ShldrTwist.R" : [0.081, 0.081],
-            "ForearmBend.L" : [0.051, 0.051],
-            "ForearmBend.R" : [0.051, 0.051],
-            "ForearmTwist.L" : [0.041, 0.041],
-            "ForearmTwist.R" : [0.041, 0.041],
-            "Hand.L" : [0.10, 0.085, 0.04, ( 0.030, -0.02, 0)],
-            "Hand.R" : [0.10, 0.085, 0.04, (-0.030, -0.02, 0)],
-            "Foot.L" : [0.16, 0.22, 0.09, (0, -0.061, 0.055)],
-            "Foot.R" : [0.16, 0.22, 0.09, (0, -0.061, 0.055)],
-            #HAND BONES ----------------------------------------------------
-            "Index1.R" : [0.015, 0.015, None, (0, 0.012, 0) ],
-            "Mid1.R" : [0.015, 0.015, None, (0, 0.012, 0) ],
-            "Ring1.R" : [0.015, 0.015, None, (0, 0.012, 0) ],
-            "Pinky1.R" : [0.011, 0.011, None, (0, 0.012, 0) ],
-            "Thumb1.R" : [0.015, 0.015, None, (0, 0.012, 0) ],
+        bones_to_create = self.template['bones']
+        constraints = self.template['constraints']
 
-            "Index1.L" : [0.015, 0.015, None, (0, 0.012, 0) ],
-            "Mid1.L" : [0.015, 0.015, None, (0, 0.012, 0) ],
-            "Ring1.L" : [0.015, 0.015, None, (0, 0.012, 0) ],
-            "Pinky1.L" : [0.011, 0.011, None, (0, 0.012, 0) ],
-            "Thumb1.L" : [0.015, 0.015, None, (0, 0.012, 0) ],
-
-            "Index2.R" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
-            "Mid2.R" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
-            "Ring2.R" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
-            "Pinky2.R" : [0.011, 0.011, 0.03, (0, 0.012, 0) ],
-            "Thumb2.R" : [0.015, 0.015, 0.08, (0, 0.012, 0) ],
-
-            "Index2.L" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
-            "Mid2.L" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
-            "Ring2.L" : [0.015, 0.015, 0.045, (0, 0.012, 0) ],
-            "Pinky2.L" : [0.011, 0.011, 0.03, (0, 0.012, 0) ],
-            "Thumb2.L" : [0.015, 0.015, 0.08, (0, 0.012, 0) ]
-        }
-
-        constraints = [
-            [ 'pelvis', 'abdomenLower', [-20,35,-15,15,-15,15,True] ],
-            [ 'abdomenLower', 'abdomenUpper', [-25,40,-20,20,-24,24,True] ],
-            [ 'abdomenUpper', 'chestLower', [-25,35,-12,12,-20,20,True] ],
-            [ 'chestLower', 'chestUpper', [-15,15,-10,10,-10,10,True] ],
-            [ 'chestUpper', 'neckLower', [-15,30,-22,22,-40,40,True] ],
-            [ 'neckLower', 'neckUpper', [-17,12,-22,22,-10,10,True] ],
-            [ 'neckUpper', 'head', [-27,25,-22,22,-20,20,True] ],
-            [ 'chestUpper', 'Collar.L', [-26,17,-30,30,-10,50,True] ],
-            [ 'chestUpper', 'Collar.R', [-17,26,-30,30,-50,10,True] ],
-            [ 'Collar.L', 'ShldrBend.L', [-135,70,0,0,-110,110,True] ],
-            [ 'Collar.R', 'ShldrBend.R', [-70,135,0,0,-110,110,True] ],
-            [ 'pelvis', 'ThighBend.L', [-115,35,-20,20,-85,20,True] ],
-            [ 'pelvis', 'ThighBend.R', [-115,35,-20,20,-25,85,True] ],
-            [ 'ThighBend.L', 'ThighTwist.L', [0,0,-55,55,0,0,True] ],
-            [ 'ThighBend.R', 'ThighTwist.R', [0,0,-55,55,0,0,True] ],
-            [ 'ShldrBend.L', 'ShldrTwist.L', [0,0,-95,80,0,0,True] ],
-            [ 'ShldrBend.R', 'ShldrTwist.R', [0,0,-95,80,0,0,True] ],
-            [ 'ForearmBend.L', 'ForearmTwist.L', [0,0,-90,80,0,0,True] ],
-            [ 'ForearmBend.R', 'ForearmTwist.R', [0,0,-90,80,0,0,True] ],
-            [ 'ThighTwist.R', 'Shin.R', [0,0,-12,12,0,140,True] ],
-            [ 'ThighTwist.L', 'Shin.L', [0,0,-12,12,-140,0,True] ],
-            [ 'ShldrTwist.R', 'ForearmBend.R', [-135,20,0,0,0,0,True] ],
-            [ 'ShldrTwist.L', 'ForearmBend.L', [-135,20,0,0,0,0,True] ],
-            [ 'ForearmTwist.L', 'Hand.L', [-40,40,-40,40,-90,90,True] ],
-            [ 'ForearmTwist.R', 'Hand.R', [-40,40,-40,40,-90,90,True] ],
-            [ 'Shin.L', 'Foot.L', [-75,40,-12,12,-10,10,True] ],
-            [ 'Shin.R', 'Foot.R', [-75,40,-12,12,-10,10,True] ],
-            #HAND BONES---------------------------------------------------------------
-            [ 'Hand.R', 'Index1.R', [-5,5,-2,2,-60,5,True] ],
-            [ 'Hand.R', 'Mid1.R', [-5,5,-2,2,-60,5,True] ],
-            [ 'Hand.R', 'Ring1.R', [-5,5,-2,2,-60,5,True] ],
-            [ 'Hand.R', 'Pinky1.R', [-5,5,-2,2,-60,5,True] ],
-            [ 'Hand.R', 'Thumb1.R', [-5,5,-30,30,-30,30,True] ],
-            [ 'Hand.L', 'Index1.L', [-5,5,-2,2,-5,60,True] ],
-            [ 'Hand.L', 'Mid1.L', [-5,5,-2,2,-5,60,True] ],
-            [ 'Hand.L', 'Ring1.L', [-5,5,-2,2,-5,60,True] ],
-            [ 'Hand.L', 'Pinky1.L', [-5,5,-2,2,-5,60,True] ],
-            [ 'Hand.L', 'Thumb1.L', [-5,5,-30,30,-30,30,True] ],
-
-            [ 'Index1.R', 'Index2.R', [-5,5,-2,2,-60,5,True] ],
-            [ 'Mid1.R', 'Mid2.R', [-5,5,-2,2,-60,5,True] ],
-            [ 'Ring1.R', 'Ring2.R', [-5,5,-2,2,-60,5,True] ],
-            [ 'Pinky1.R', 'Pinky2.R', [-5,5,-2,2,-60,5,True] ],
-            [ 'Thumb1.R', 'Thumb2.R', [-20,20,-20,20,-20,20,True] ],
-            [ 'Index1.L', 'Index2.L', [-5,5,-2,2,-5,60,True] ],
-            [ 'Mid1.L', 'Mid2.L', [-5,5,-2,2,-5,60,True] ],
-            [ 'Ring1.L', 'Ring2.L', [-5,5,-2,2,-5,60,True] ],
-            [ 'Pinky1.L', 'Pinky2.L', [-5,5,-2,2,-5,60,True] ],
-            [ 'Thumb1.L', 'Thumb2.L', [-20,20,-20,20,-20,20,True] ]
-        ]
         self.shrinkwrap_object_name = shrinkwrap_object_name
         phys_map = {}
         for bone_name, params in bones_to_create.items():
@@ -479,27 +380,20 @@ class PhysPoseRig():
             con = Constraint(phys_map[bone_name1], phys_map[bone_name2], parameters)
             self.constraints.append(con)
 
-        collision_group_ext = [
-            'ShldrBend.L',
-            'ShldrBend.R'
-        ]
-        bpy.ops.object.mode_set(mode='OBJECT')
-        bpy.ops.object.select_all(action='DESELECT')
-        for phys_obj in self.phys_objects:
-            #PHYS-GenesisRig3-Foot.L
-            mybone = phys_obj.get_name().split('-')[-1]
-            if mybone in collision_group_ext:
-                number_of_layers = len(phys_obj.phys_object.rigid_body.collision_groups)
-                phys_obj.phys_object.rigid_body.collision_groups = [i in {1} for i in range(number_of_layers)]
+        if 'collision_group_ext' in self.template:
+            collision_group_ext = self.template['collision_group_ext']
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.select_all(action='DESELECT')
+            for phys_obj in self.phys_objects:
+                #PHYS-GenesisRig3-Foot.L
+                mybone = phys_obj.get_name().split('-')[-1]
+                if mybone in collision_group_ext:
+                    number_of_layers = len(phys_obj.phys_object.rigid_body.collision_groups)
+                    phys_obj.phys_object.rigid_body.collision_groups = [i in {1} for i in range(number_of_layers)]
 
-
-        minimize_twist = [
-            [0.6, ["ShldrBend.R","ShldrTwist.R","ShldrBend.L","ShldrTwist.L"], 25],
-            [0.6, ["ThighBend.R","ThighTwist.R","ThighBend.L","ThighTwist.L"], 25],
-            [0.6, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
-        ]
         self.set_rest_matrix()
-        self.apply_stiffness_map(minimize_twist)
+        if 'minimize_twist' in self.template:
+            self.apply_stiffness_map(self.template['minimize_twist'])
         return True, "Success"
 
     def delete_rig(self):
@@ -516,10 +410,10 @@ class PhysPoseRig():
         physpose_data = json.loads(armature.phys_pose_data)
         bpy.context.scene.layers = armature.layers
 
-        armature.pose.bones["HandIk.R"].matrix = armature.pose.bones["Hand.R"].matrix.copy()
-        armature.pose.bones["HandIk.L"].matrix = armature.pose.bones["Hand.L"].matrix.copy()
-        armature.pose.bones["FootIk.R"].matrix = armature.pose.bones["Foot.R"].matrix.copy()
-        armature.pose.bones["FootIk.L"].matrix = armature.pose.bones["Foot.L"].matrix.copy()
+        #armature.pose.bones["HandIk.R"].matrix = armature.pose.bones["Hand.R"].matrix.copy()
+        #armature.pose.bones["HandIk.L"].matrix = armature.pose.bones["Hand.L"].matrix.copy()
+        #armature.pose.bones["FootIk.R"].matrix = armature.pose.bones["Foot.R"].matrix.copy()
+        #armature.pose.bones["FootIk.L"].matrix = armature.pose.bones["Foot.L"].matrix.copy()
 
         for phys in self.phys_objects:
             name = phys.phys_object.name
@@ -566,13 +460,6 @@ def print_total_weight(poserig):
         total += phys.phys_object.rigid_body.mass
     print("Total weight: ", total)
 
-stiffness_map = [
-    [0.05, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
-    [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
-    [0.2, ["head","neckUpper"]],
-    [0.25, ["chestUpper","Collar.R","Collar.L"]]
-]
-
 rigs = {}
 
 
@@ -600,7 +487,7 @@ def get_armature_from_mesh(mesh_object):
 
 def get_poserig():
     ob = get_armature()
-    poserig = PhysPoseRig(ob)
+    poserig = PhysPoseRig(ob, template)
     poserig.deserialize(ob.phys_pose_data)
     return poserig
 
@@ -620,14 +507,16 @@ def create_rig():
     if not shrink_wrap_name:
         return False, "Could not find mesh"
     armature_name = ob.name
-    poserig = PhysPoseRig(bpy.data.objects[armature_name])
+    imp.reload(template)
+    poserig = PhysPoseRig(bpy.data.objects[armature_name], template.template)
     poserig.clear_constraints()
     poserig.create_rig(shrink_wrap_name)
     if custom_template is not None and armature_name in custom_template.templates:
         imp.reload(custom_template)
         custom_template.templates[armature_name](poserig)
     poserig.hide_constraints()
-    poserig.apply_stiffness_map(stiffness_map)
+    if 'stiffness_map' in template.template:
+        poserig.apply_stiffness_map(template.template['stiffness_map'])
     rigs[armature_name] = poserig
     ob.phys_pose_data = rigs[armature_name].serialize()
     return True, "Success"
@@ -781,17 +670,6 @@ def unregister():
 if __name__ == "__main__":
     register()
 
-
-
-#create_rig()
-
-#rigmap = [['GenesisRig3', 'Genesis3Female.002'], ['GenesisRig1', 'Genesis3Female']]
-#for rigname, meshname in rigmap:
-#    bpy.ops.object.select_all(action='DESELECT')
-#    bpy.context.scene.layers = bpy.data.objects[rigname].layers
-#    create_rig(rigname, meshname)
-
-#rigs[0].set_rotations((1.0, 0.0, 0.0), ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"])
 """
 def draw_phys_as(type):
   for obj in bpy.data.objects:
