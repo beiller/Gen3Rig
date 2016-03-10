@@ -20,7 +20,19 @@ template = {
         "lowerleg02_L" : [0.10, 0.10],
         "lowerleg02_R" : [0.10, 0.10],
         "foot_L" : [0.10, 0.10, 0.2],
-        "foot_R" : [0.10, 0.10, 0.2]
+        "foot_R" : [0.10, 0.10, 0.2],
+        #"clavicle_L" : [0.10, 0.10],
+        #"clavicle_R" : [0.10, 0.10],
+        #"shoulder01_L" : [0.10, 0.10],
+        #"shoulder01_R" : [0.10, 0.10],
+        "upperarm01_R" : [0.06, 0.06],
+        "upperarm01_L" : [0.06, 0.06],
+        "upperarm02_R" : [0.06, 0.06],
+        "upperarm02_L" : [0.06, 0.06],
+        "lowerarm01_R" : [0.06, 0.06],
+        "lowerarm01_L" : [0.06, 0.06],
+        "lowerarm02_R" : [0.03, 0.03],
+        "lowerarm02_L" : [0.03, 0.03]
     },
     'constraints': [
         [ 'root', 'spine04', [-20,35,-15,15,-15,15,True] ],
@@ -40,7 +52,21 @@ template = {
         [ 'lowerleg01_R', 'lowerleg02_R', [0,0,-12,12,0,0,True] ],
         [ 'lowerleg01_L', 'lowerleg02_L', [0,0,-12,12,0,0,True] ],
         [ 'lowerleg02_R', 'foot_R', [-30,30,-10,10,-10,10,True] ],
-        [ 'lowerleg02_L', 'foot_L', [-30,30,-10,10,-10,10,True] ]
+        [ 'lowerleg02_L', 'foot_L', [-30,30,-10,10,-10,10,True] ],
+
+        #[ 'spine01', 'clavicle_R', [-20,20,-20,20,-20,20,True] ],
+        #[ 'spine01', 'clavicle_L', [-20,20,-20,20,-20,20,True] ],
+        #[ 'clavicle_R', 'shoulder01_R', [-20,20,-20,20,-20,20,True] ],
+        #[ 'clavicle_L', 'shoulder01_L', [-20,20,-20,20,-20,20,True] ],
+
+        [ 'spine01', 'upperarm01_R', [-90,90,-30,30,-150,150,True] ],
+        [ 'spine01', 'upperarm01_L', [-90,90,-30,30,-150,150,True] ],
+        [ 'upperarm01_R', 'upperarm02_R', [-0,0,-80,80,-0,0,True] ],
+        [ 'upperarm01_L', 'upperarm02_L', [-0,0,-80,80,-0,0,True] ],
+        [ 'upperarm02_R', 'lowerarm01_R', [-170,30,-0,0,-0,0,True] ],
+        [ 'upperarm02_L', 'lowerarm01_L', [-170,30,-0,0,-0,0,True] ],
+        [ 'lowerarm01_R', 'lowerarm02_R', [-0,0,-20,20,-0,0,True] ],
+        [ 'lowerarm01_L', 'lowerarm02_L', [-0,0,-20,20,-0,0,True] ]
     ],
     'stiffness_map': [
         [0.05, ["root", "spine04", "spine03", "spine02", "spine01"]],
