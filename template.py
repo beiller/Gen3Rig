@@ -19,8 +19,12 @@ template = {
         "lowerleg01_R" : [0.10, 0.10],
         "lowerleg02_L" : [0.10, 0.10],
         "lowerleg02_R" : [0.10, 0.10],
-        "foot_L" : [0.10, 0.10, 0.2],
-        "foot_R" : [0.10, 0.10, 0.2],
+        "foot_L" : [0.10, 0.10, 0.12],
+        "foot_R" : [0.10, 0.10, 0.12],
+
+        "toe1-1_L" : [0.08, 0.05, 0.06, (0.04, 0.0, 0.0)],
+        "toe1-1_R" : [0.08, 0.05, 0.06, (-0.04, 0.0, 0.0)],
+
         #"clavicle_L" : [0.10, 0.10],
         #"clavicle_R" : [0.10, 0.10],
         #"shoulder01_L" : [0.10, 0.10],
@@ -32,7 +36,27 @@ template = {
         "lowerarm01_R" : [0.06, 0.06],
         "lowerarm01_L" : [0.06, 0.06],
         "lowerarm02_R" : [0.03, 0.03],
-        "lowerarm02_L" : [0.03, 0.03]
+        "lowerarm02_L" : [0.03, 0.03],
+        "wrist_R" : [0.05, 0.07, 0.07, (0,0,-0.01)],
+        "wrist_L" : [0.05, 0.07, 0.07, (0,0,-0.01)],
+
+        "finger2-1_R": [0.01, 0.01],
+        "finger2-1_L": [0.01, 0.01],
+        "finger3-1_R": [0.01, 0.01],
+        "finger3-1_L": [0.01, 0.01],
+        "finger4-1_R": [0.01, 0.01],
+        "finger4-1_L": [0.01, 0.01],
+        "finger5-1_R": [0.01, 0.01],
+        "finger5-1_L": [0.01, 0.01],
+
+        "finger2-2_R": [0.01, 0.01, 0.05],
+        "finger2-2_L": [0.01, 0.01, 0.05],
+        "finger3-2_R": [0.01, 0.01, 0.05],
+        "finger3-2_L": [0.01, 0.01, 0.05],
+        "finger4-2_R": [0.01, 0.01, 0.05],
+        "finger4-2_L": [0.01, 0.01, 0.05],
+        "finger5-2_R": [0.01, 0.01, 0.05],
+        "finger5-2_L": [0.01, 0.01, 0.05],
     },
     'constraints': [
         [ 'root', 'spine04', [-20,35,-15,15,-15,15,True] ],
@@ -54,6 +78,9 @@ template = {
         [ 'lowerleg02_R', 'foot_R', [-30,30,-10,10,-10,10,True] ],
         [ 'lowerleg02_L', 'foot_L', [-30,30,-10,10,-10,10,True] ],
 
+        [ 'foot_R', 'toe1-1_R', [-20,20,-1,1,-5,5,True] ],
+        [ 'foot_L', 'toe1-1_L', [-20,20,-1,1,-5,5,True] ],
+
         #[ 'spine01', 'clavicle_R', [-20,20,-20,20,-20,20,True] ],
         #[ 'spine01', 'clavicle_L', [-20,20,-20,20,-20,20,True] ],
         #[ 'clavicle_R', 'shoulder01_R', [-20,20,-20,20,-20,20,True] ],
@@ -63,10 +90,34 @@ template = {
         [ 'spine01', 'upperarm01_L', [-90,90,-30,30,-150,150,True] ],
         [ 'upperarm01_R', 'upperarm02_R', [-0,0,-80,80,-0,0,True] ],
         [ 'upperarm01_L', 'upperarm02_L', [-0,0,-80,80,-0,0,True] ],
-        [ 'upperarm02_R', 'lowerarm01_R', [-170,30,-0,0,-0,0,True] ],
-        [ 'upperarm02_L', 'lowerarm01_L', [-170,30,-0,0,-0,0,True] ],
-        [ 'lowerarm01_R', 'lowerarm02_R', [-0,0,-20,20,-0,0,True] ],
-        [ 'lowerarm01_L', 'lowerarm02_L', [-0,0,-20,20,-0,0,True] ]
+        [ 'upperarm02_R', 'lowerarm01_R', [-130,20,-5,5,-0,0,True] ],
+        [ 'upperarm02_L', 'lowerarm01_L', [-130,20,-5,5,-0,0,True] ],
+        [ 'lowerarm01_R', 'lowerarm02_R', [-0,0,-100,100,-0,0,True] ],
+        [ 'lowerarm01_L', 'lowerarm02_L', [-0,0,-100,100,-0,0,True] ],
+        [ 'lowerarm02_R', 'wrist_R', [-30,30,-10,10,-75,75,True] ],
+        [ 'lowerarm02_L', 'wrist_L', [-30,30,-10,10,-75,75,True] ],
+
+        [ 'wrist_R', 'finger2-1_R', [-70,10,-1,1,-1,1,True] ],
+        [ 'wrist_R', 'finger3-1_R', [-70,10,-1,1,-1,1,True] ],
+        [ 'wrist_R', 'finger4-1_R', [-70,10,-1,1,-1,1,True] ],
+        [ 'wrist_R', 'finger5-1_R', [-70,10,-1,1,-1,1,True] ],
+
+        [ 'finger2-1_R', 'finger2-2_R', [-70,10,-1,1,-1,1,True] ],
+        [ 'finger3-1_R', 'finger3-2_R', [-70,10,-1,1,-1,1,True] ],
+        [ 'finger4-1_R', 'finger4-2_R', [-70,10,-1,1,-1,1,True] ],
+        [ 'finger5-1_R', 'finger5-2_R', [-70,10,-1,1,-1,1,True] ],
+
+        [ 'wrist_L', 'finger2-1_L', [-70,10,-1,1,-1,1,True] ],
+        [ 'wrist_L', 'finger3-1_L', [-70,10,-1,1,-1,1,True] ],
+        [ 'wrist_L', 'finger4-1_L', [-70,10,-1,1,-1,1,True] ],
+        [ 'wrist_L', 'finger5-1_L', [-70,10,-1,1,-1,1,True] ],
+
+        [ 'finger2-1_L', 'finger2-2_L', [-70,10,-1,1,-1,1,True] ],
+        [ 'finger3-1_L', 'finger3-2_L', [-70,10,-1,1,-1,1,True] ],
+        [ 'finger4-1_L', 'finger4-2_L', [-70,10,-1,1,-1,1,True] ],
+        [ 'finger5-1_L', 'finger5-2_L', [-70,10,-1,1,-1,1,True] ],
+
+
     ],
     'stiffness_map': [
         [0.05, ["root", "spine04", "spine03", "spine02", "spine01"]],
@@ -76,8 +127,8 @@ template = {
         #[0.25, ["chestUpper","Collar.R","Collar.L"]]
     ],
     'minimize_twist': [
-        #[0.6, ["ShldrBend.R","ShldrTwist.R","ShldrBend.L","ShldrTwist.L"], 25],
-        [0.6,  ["upperleg01_L", "upperleg02_L", "upperleg01_R", "upperleg02_R"], 25],
+        [0.6,  ["upperarm01_L", "upperarm02_L", "upperarm01_R", "upperarm02_R", "lowerarm01_L", "lowerarm02_L", "lowerarm01_R", "lowerarm02_R"], 25],
+        [0.6,  ["upperleg01_L", "upperleg02_L", "upperleg01_R", "upperleg02_R", "lowerleg01_L", "lowerleg02_L", "lowerleg01_R", "lowerleg02_R"], 25],
         #[0.6, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
     ]
 }

@@ -72,7 +72,7 @@ class PhysObject():
         return cube_object
 
     def get_name(self):
-        return 'PHYS-%s-%s' % (self.armature.name, self.pose_bone.name)
+        return 'PHYS~%s~%s' % (self.armature.name, self.pose_bone.name)
 
     def create_copy_rotation_constraint(self):
         for con in self.pose_bone.constraints:
@@ -207,7 +207,7 @@ class Constraint:
         con.rigid_body_constraint.disable_collisions = p[6]
 
     def get_name(self):
-        return 'JOINT-%s-%s-%s' % (self.phys_object1.armature.name, self.phys_object1.pose_bone.name, self.phys_object2.pose_bone.name)
+        return 'JOINT~%s~%s~%s' % (self.phys_object1.armature.name, self.phys_object1.pose_bone.name, self.phys_object2.pose_bone.name)
 
     def create_constraint(self):
         bone = self.phys_object2.pose_bone
@@ -342,7 +342,7 @@ class PhysPoseRig():
 
         attach_phys = None
         for phys in self.phys_objects:
-            if attach_bone_name == phys.phys_object.name.split('-')[2]:
+            if attach_bone_name == phys.phys_object.name.split('~')[2]:
                 attach_phys = phys
         if attach_phys:
             constraints.append( Constraint(attach_phys, phys_objects[0], constraint_parameters) )
@@ -386,7 +386,7 @@ class PhysPoseRig():
             bpy.ops.object.select_all(action='DESELECT')
             for phys_obj in self.phys_objects:
                 #PHYS-GenesisRig3-Foot.L
-                mybone = phys_obj.get_name().split('-')[-1]
+                mybone = phys_obj.get_name().split('~')[-1]
                 if mybone in collision_group_ext:
                     number_of_layers = len(phys_obj.phys_object.rigid_body.collision_groups)
                     phys_obj.phys_object.rigid_body.collision_groups = [i in {1} for i in range(number_of_layers)]
@@ -465,7 +465,7 @@ rigs = {}
 
 def get_armature():
     if bpy.context.scene.objects.active.name[0:4] == 'PHYS':
-        phystype, armature, bone = bpy.context.scene.objects.active.name.split('-')
+        phystype, armature, bone = bpy.context.scene.objects.active.name.split('~')
         return bpy.data.objects[armature]
     elif type(bpy.context.scene.objects.active.data) == bpy.types.Mesh:
         #we have the mesh selected, grab the armature
