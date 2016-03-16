@@ -109,7 +109,7 @@ template = {
     'stiffness_map': [
         [0.05, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
         [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
-        [0.2, ["head","neckUpper"]],
+        [0.2,  ["head","neckUpper"]],
         [0.25, ["chestUpper","Collar.R","Collar.L"]]
     ],
     'minimize_twist': [

@@ -10,7 +10,8 @@ except ImportError:
     custom_template = None
 
 
-from . import template
+from . import template as makehuman_template
+from . import template_genesis3 as genesis3_template
 
 
 class PhysObject():
@@ -483,6 +484,8 @@ def get_armature_from_mesh(mesh_object):
                 if type(modifier) == bpy.types.ArmatureModifier:
                     return modifier.object
     return None
+
+template = makehuman_template
 
 
 def get_poserig():
