@@ -112,7 +112,7 @@ class PhysObject():
         self.phys_object.rigid_body.angular_damping = 0.5
         self.phys_object.rigid_body.linear_damping = 0.5
         self.phys_object.rigid_body.use_margin = True
-        self.phys_object.rigid_body.collision_margin = 0.001
+        self.phys_object.rigid_body.collision_margin = 0.002
         sx, sy, sz = self.phys_object.dimensions
         """
             470 is an adjustment factor because mass is calculated based on bounds
@@ -133,9 +133,12 @@ class PhysObject():
         sr = self.phys_object.modifiers.new('shrinkwrap-to-apply', 'SHRINKWRAP')
         sr.target = bpy.data.objects[shrinkwrap_object_name]
         sm = self.phys_object.modifiers.new('smooth-to-apply', 'SMOOTH')
+        disp = self.phys_object.modifiers.new('displace-to-apply', 'DISPLACE')
+        disp.strength = -0.002
         bpy.ops.object.modifier_apply(apply_as='DATA', modifier="subsurf-to-apply")
         bpy.ops.object.modifier_apply(apply_as='DATA', modifier="shrinkwrap-to-apply")
         bpy.ops.object.modifier_apply(apply_as='DATA', modifier="smooth-to-apply")
+        bpy.ops.object.modifier_apply(apply_as='DATA', modifier="displace-to-apply")
         #Recalculate mass because our shape has changed
         sx, sy, sz = self.phys_object.dimensions
         """
