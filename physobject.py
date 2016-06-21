@@ -120,7 +120,8 @@ class PhysObject():
         """
         self.phys_object.rigid_body.mass = sx * sy * sz * 470 
         self.phys_object.rigid_body.collision_shape = 'CONVEX_HULL'
-        self.phys_object.draw_type = 'BOUNDS'
+        #self.phys_object.rigid_body.collision_shape = 'MESH'
+
 
     def shrinkwrap_to_object(self, shrinkwrap_object_name):
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -133,6 +134,7 @@ class PhysObject():
         sr = self.phys_object.modifiers.new('shrinkwrap-to-apply', 'SHRINKWRAP')
         sr.target = bpy.data.objects[shrinkwrap_object_name]
         sm = self.phys_object.modifiers.new('smooth-to-apply', 'SMOOTH')
+        sm.iterations = 4
         disp = self.phys_object.modifiers.new('displace-to-apply', 'DISPLACE')
         disp.strength = -0.002
         bpy.ops.object.modifier_apply(apply_as='DATA', modifier="subsurf-to-apply")
@@ -357,16 +359,27 @@ class PhysPoseRig():
         self.constraints += constraints
         self.set_rest_matrix()
 
-    def hide_constraints(self):
+    def hide_constraints(self, hidden=True):
         for con in self.constraints:
-            con.bone_constraint.hide = True
+            con.bone_constraint.hide = hidden
+
+    def hide_phys_objects(self, hidden=True):
+        for con in self.phys_objects:
+            con.phys_object.hide = hidden
+
+    def draw_phys_objects(self, draw_type='BOUNDS'):
+        for con in self.phys_objects:
+            con.phys_object.draw_type = draw_type
 
     def apply_stiffness_map(self, stiffness):
         for m in stiffness:
-            iterations = None
-            if len(m) > 2:
-                iterations = m[2]
-            self.set_stiffness(m[0], m[1], iterations)
+            self.apply_stiffness(m)
+
+    def apply_stiffness(self, m):
+        iterations = None
+        if len(m) > 2:
+            iterations = m[2]
+        self.set_stiffness(m[0], m[1], iterations)
 
     def create_rig(self, shrinkwrap_object_name=None, damping=1.0):
         bones_to_create = self.template['bones']
@@ -488,7 +501,8 @@ def get_armature_from_mesh(mesh_object):
                     return modifier.object
     return None
 
-template = makehuman_template
+#template = makehuman_template
+template = genesis3_template
 
 
 def get_poserig():
@@ -521,6 +535,7 @@ def create_rig():
         imp.reload(custom_template)
         custom_template.templates[armature_name](poserig)
     poserig.hide_constraints()
+    poserig.draw_phys_objects('BOUNDS')
     if 'stiffness_map' in template.template:
         poserig.apply_stiffness_map(template.template['stiffness_map'])
     rigs[armature_name] = poserig
@@ -528,85 +543,119 @@ def create_rig():
     return True, "Success"
 
 
-class GeneratePhysPoseRig(bpy.types.Operator):
-    bl_idname = "object.generate_physpose_rig"
-    bl_label = "Generate PhysPose Rig"
-    bl_options = {'REGISTER', 'UNDO'}
-    def execute(self, context):
-        success, message = create_rig()
+operators_list = {}
+
+
+def create_operator_class(class_name, idname, label, options, execute_function):
+    def handle_func_call(self, context):
+        success, message = self.do_work()
         if not success:
             self.report({'INFO'}, message)
         return {'FINISHED'}
 
+    type_map = {
+        'bl_idname': idname,
+        'bl_label': label,
+        'bl_options': options,
+        'do_work': execute_function,
+        'execute': handle_func_call
+    }
 
-class DeletePhysPoseRig(bpy.types.Operator):
-    bl_idname = "object.delete_physpose_rig"
-    bl_label = "Delete PhysPose Rig"
-    bl_options = {'REGISTER', 'UNDO'}
-    def execute(self, context):
-        poserig = get_poserig()
-        poserig.delete_rig()
-        success, message = (True, "Success")
-        if not success:
-            self.report({'INFO'}, message)
-        return {'FINISHED'}
-
-
-class PinPhysObject(bpy.types.Operator):
-    bl_idname = "object.pin_phys_object"
-    bl_label = "PinPhysObject"
-    def execute(self, context):
-        bpy.ops.object.mode_set(mode='OBJECT')
-        for o in bpy.context.selected_objects:
-            if hasattr(o, 'rigid_body') and o.rigid_body is not None:
-                matrix = o.matrix_world
-                o.rigid_body.kinematic = True
-                o.matrix_world = matrix
-        success, message = (True, "Success")
-        if not success:
-            self.report({'INFO'}, message)
-        return {'FINISHED'}
+    operator_class = type(class_name, (bpy.types.Operator,), type_map)
+    operators_list[class_name] = operator_class
+    return operator_class
 
 
-class UnpinPhysObject(bpy.types.Operator):
-    bl_idname = "object.unpin_phys_object"
-    bl_label = "PinPhysObject"
-    def execute(self, context):
-        bpy.ops.object.mode_set(mode='OBJECT')
-        for o in bpy.context.selected_objects:
-            if hasattr(o, 'rigid_body') and o.rigid_body is not None:
-                o.rigid_body.kinematic = False
-        success, message = (True, "Success")
-        if not success:
-            self.report({'INFO'}, message)
-        return {'FINISHED'}
+def generate_physpose_rig(self):
+    return create_rig()
 
 
-class ResetPhysPoseRig(bpy.types.Operator):
-    bl_idname = "object.reset_physpose_rig"
-    bl_label = "Reset PhysPose Rig"
-    def execute(self, context):
-        poserig = get_poserig()
-        success, message = poserig.restore_physpose_rig()
-        if not success:
-            self.report({'INFO'}, message)
-        return {'FINISHED'}
+def delete_physpose_rig(self):
+    poserig = get_poserig()
+    poserig.delete_rig()
+    return True, "Success"
 
 
-class SetDampingPhysPoseRig(bpy.types.Operator):
-    bl_idname = "object.set_damping_physpose_rig"
-    bl_label = "SetDampingPhysPoseRig"
-    def execute(self, context):
-        poserig = get_poserig()
-        armature = get_armature()
-        damping_setting = armature.phys_pose_damping
-        for phys_object in poserig.phys_objects:
-            phys_object.phys_object.rigid_body.angular_damping = damping_setting
-            phys_object.phys_object.rigid_body.linear_damping = damping_setting
-        success, message = (True, "Success")
-        if not success:
-            self.report({'INFO'}, message)
-        return {'FINISHED'}
+def pin_phys_object(self):
+    bpy.ops.object.mode_set(mode='OBJECT')
+    for o in bpy.context.selected_objects:
+        if hasattr(o, 'rigid_body') and o.rigid_body is not None:
+            matrix = o.matrix_world
+            o.rigid_body.kinematic = True
+            o.matrix_world = matrix
+    return True, "Success"
+
+
+def unpin_phys_object(self):
+    bpy.ops.object.mode_set(mode='OBJECT')
+    for o in bpy.context.selected_objects:
+        if hasattr(o, 'rigid_body') and o.rigid_body is not None:
+            o.rigid_body.kinematic = False
+    return True, "Success"
+
+
+def reset_physpose_rig(self):
+    poserig = get_poserig()
+    return poserig.restore_physpose_rig()
+
+
+def set_damping_physpose_rig(self):
+    poserig = get_poserig()
+    armature = get_armature()
+    damping_setting = armature.phys_pose_damping
+    for phys_object in poserig.phys_objects:
+        phys_object.phys_object.rigid_body.angular_damping = damping_setting
+        phys_object.phys_object.rigid_body.linear_damping = damping_setting
+    return True, "Success"
+
+
+def set_spine_stiffness_physpose_rig(self):
+    poserig = get_poserig()
+    armature = get_armature()
+    damping_setting = armature.phys_pose_spine_stiffness
+    new_stiffness = list(template.template['stiffness_map'][0])
+    new_stiffness[0] = damping_setting
+    poserig.apply_stiffness(new_stiffness)
+    return True, "Success"
+
+
+def draw_bounds_physpose_rig(self):
+    poserig = get_poserig()
+    poserig.draw_phys_objects('BOUNDS')
+    return True, "Success"
+
+
+def draw_full_physpose_rig(self):
+    poserig = get_poserig()
+    poserig.draw_phys_objects('TEXTURED')
+    return True, "Success"
+
+
+def collide_mesh(self):
+    poserig = get_poserig()
+    for phys_object in poserig.phys_objects:
+        phys_object.phys_object.rigid_body.collision_shape = 'MESH'
+    return True, "Success"
+
+
+def collide_hull(self):
+    poserig = get_poserig()
+    for phys_object in poserig.phys_objects:
+        phys_object.phys_object.rigid_body.collision_shape = 'CONVEX_HULL'
+    return True, "Success"
+
+
+GeneratePhysPoseRig = create_operator_class('GeneratePhysPoseRig', "object.generate_physpose_rig", "Generate PhysPose Rig", {'REGISTER', 'UNDO'}, generate_physpose_rig)
+DeletePhysPoseRig = create_operator_class('DeletePhysPoseRig', "object.delete_physpose_rig", "Delete PhysPose Rig", {'REGISTER', 'UNDO'}, delete_physpose_rig)
+PinPhysObject = create_operator_class('PinPhysObject', "object.pin_phys_object", "PinPhysObject", {'REGISTER', 'UNDO'}, pin_phys_object)
+UnpinPhysObject = create_operator_class('UnpinPhysObject', "object.unpin_phys_object", "UnpinPhysObject", {'REGISTER', 'UNDO'}, unpin_phys_object)
+ResetPhysPoseRig = create_operator_class('ResetPhysPoseRig', "object.reset_physpose_rig", "ResetPhysPoseRig", {'REGISTER', 'UNDO'}, reset_physpose_rig)
+SetDampingPhysPoseRig = create_operator_class('SetDampingPhysPoseRig', "object.set_damping_physpose_rig", "SetDampingPhysPoseRig", {'REGISTER', 'UNDO'}, set_damping_physpose_rig)
+SetSpineStiffnessPhysPoseRig = create_operator_class('SetSpineStiffnessPhysPoseRig', "object.set_spine_stiffness_physpose_rig", "SetSpineStiffnessPhysPoseRig", {'REGISTER', 'UNDO'}, set_spine_stiffness_physpose_rig)
+DrawBoundsPhysPoseRig = create_operator_class('DrawBoundsPhysPoseRig', "object.draw_bounds_physpose_rig", "DrawBoundsPhysPoseRig", {'REGISTER', 'UNDO'}, draw_bounds_physpose_rig)
+DrawFullPhysPoseRig = create_operator_class('DrawFullPhysPoseRig', "object.draw_full_physpose_rig", "DrawFullPhysPoseRig", {'REGISTER', 'UNDO'}, draw_full_physpose_rig)
+SetCollisionMesh = create_operator_class('SetCollisionMesh', "object.collide_mesh", "SetCollisionMesh", {'REGISTER', 'UNDO'}, collide_mesh)
+SetCollisionHull = create_operator_class('SetCollisionHull', "object.collide_hull", "SetCollisionHull", {'REGISTER', 'UNDO'}, collide_hull)
 
 
 class PhysPosePanel(bpy.types.Panel):
@@ -627,11 +676,18 @@ class PhysPosePanel(bpy.types.Panel):
             #layout.operator("object.unmute_constraints_physpose_rig", text='Unmute Constraints on PhysPose Rig')
             layout.label("Set Damping")
             row = layout.row()
-            row.prop(ob, 'phys_pose_damping', slider=True)
+            row.prop(armature, 'phys_pose_damping', slider=True)
             row.operator("object.set_damping_physpose_rig", text='Set Damping')
-            #row2 = layout.row()
-            #row2.prop(ob, 'phys_pose_spine_stiffness', slider=True)
-            #row2.operator("object.set_spine_stiffness_physpose_rig", text='Set Spine Stiffness')
+            row2 = layout.row()
+            row2.prop(armature, 'phys_pose_spine_stiffness', slider=True)
+            row2.operator("object.set_spine_stiffness_physpose_rig", text='Set Spine Stiffness')
+
+        row = layout.row()
+        row.operator("object.draw_bounds_physpose_rig", text='Draw As Bounds')
+        row.operator("object.draw_full_physpose_rig", text='Draw As Shapes')
+        row2 = layout.row()
+        row2.operator("object.collide_mesh", text='Collide as Mesh')
+        row2.operator("object.collide_hull", text='Collide as Convex Hull')
         layout.label("PhysRig Tools")
         if armature is not None:
             layout.operator("object.reset_physpose_rig", text='Reset PhysPose Rig to Base Pose')
@@ -640,32 +696,20 @@ class PhysPosePanel(bpy.types.Panel):
 
 
 def register():
-    bpy.utils.register_class(GeneratePhysPoseRig)
-    bpy.utils.register_class(DeletePhysPoseRig)
-    #bpy.utils.register_class(SetRotationsPhysPoseRig)
-    #bpy.utils.register_class(UnmuteConstraintsPhysPoseRig)
-    bpy.utils.register_class(SetDampingPhysPoseRig)
-    bpy.utils.register_class(PinPhysObject)
-    bpy.utils.register_class(UnpinPhysObject)
-    bpy.utils.register_class(ResetPhysPoseRig)
-    #bpy.utils.register_class(SetSpineStiffnessPhysPoseRig)
+    for operator_class_name in operators_list:
+        operator_class = operators_list[operator_class_name]
+        bpy.utils.register_class(operator_class)
 
     bpy.utils.register_class(PhysPosePanel)
     bpy.types.Object.phys_pose_data = bpy.props.StringProperty(name = "PhysPoseData")
     bpy.types.Object.phys_pose_damping = bpy.props.FloatProperty(name = "PhysPoseDamping", default=1.0, min=0.0, max=1.0)
-    bpy.types.Object.phys_pose_spine_stiffness = bpy.props.FloatProperty(name = "PhysPoseSpineStiffness", default=1.0, min=0.0, max=1.0)
+    bpy.types.Object.phys_pose_spine_stiffness = bpy.props.FloatProperty(name = "PhysPoseSpineStiffness", default=0.05, min=0.0, max=1.0)
 
 
 def unregister():
-    bpy.utils.unregister_class(GeneratePhysPoseRig)
-    bpy.utils.unregister_class(DeletePhysPoseRig)
-    #bpy.utils.unregister_class(SetRotationsPhysPoseRig)
-    #bpy.utils.unregister_class(UnmuteConstraintsPhysPoseRig)
-    bpy.utils.unregister_class(SetDampingPhysPoseRig)
-    bpy.utils.unregister_class(PinPhysObject)
-    bpy.utils.unregister_class(UnpinPhysObject)
-    bpy.utils.unregister_class(ResetPhysPoseRig)
-    #bpy.utils.unregister_class(SetSpineStiffnessPhysPoseRig)
+    for operator_class_name in operators_list:
+        operator_class = operators_list[operator_class_name]
+        bpy.utils.unregister_class(operator_class)
 
     bpy.utils.unregister_class(PhysPosePanel)
     del bpy.types.Object.phys_pose_data
@@ -675,16 +719,3 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-
-"""
-def draw_phys_as(type):
-  for obj in bpy.data.objects:
-    if obj.name[0:4] == 'PHYS':
-        obj.draw_type = type
-for obj in bpy.data.objects:
-    print(obj.name)
-    if obj.name[0:5] == 'JOINT':
-        print(obj.name)
-        obj.hide = True
-draw_phys_as('TEXTURED')
-"""

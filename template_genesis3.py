@@ -63,10 +63,10 @@ template = {
         [ 'chestUpper', 'neckLower', [-15,30,-22,22,-40,40,True] ],
         [ 'neckLower', 'neckUpper', [-17,12,-22,22,-10,10,True] ],
         [ 'neckUpper', 'head', [-27,25,-22,22,-20,20,True] ],
-        [ 'chestUpper', 'Collar.L', [-26,17,-30,30,-10,50,True] ],
-        [ 'chestUpper', 'Collar.R', [-17,26,-30,30,-50,10,True] ],
-        [ 'Collar.L', 'ShldrBend.L', [-135,70,0,0,-110,110,True] ],
-        [ 'Collar.R', 'ShldrBend.R', [-70,135,0,0,-110,110,True] ],
+        [ 'chestUpper', 'Collar.L', [-26,17,-30,30,-60,60,True] ],
+        [ 'chestUpper', 'Collar.R', [-17,26,-30,30,-60,60,True] ],
+        [ 'Collar.L', 'ShldrBend.L', [-70,135,-10,10,-110,110,True] ],
+        [ 'Collar.R', 'ShldrBend.R', [-70,135,-10,10,-110,110,True] ],
         [ 'pelvis', 'ThighBend.L', [-115,35,-20,20,-85,20,True] ],
         [ 'pelvis', 'ThighBend.R', [-115,35,-20,20,-25,85,True] ],
         [ 'ThighBend.L', 'ThighTwist.L', [0,0,-55,55,0,0,True] ],
@@ -107,9 +107,9 @@ template = {
         [ 'Thumb1.L', 'Thumb2.L', [-20,20,-20,20,-20,20,True] ]
     ],
     'stiffness_map': [
-        [0.05, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower","neckUpper"]],
+        [0.05, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower"]],
         [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
-        [0.2,  ["head","neckUpper"]],
+        [0.2,  ["head","neckUpper","neckLower"]],
         [0.25, ["chestUpper","Collar.R","Collar.L"]]
     ],
     'minimize_twist': [

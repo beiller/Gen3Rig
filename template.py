@@ -12,10 +12,10 @@ template = {
         "neck02" : [0.08, 0.08],
         "neck03" : [0.08, 0.08],
         "head" : [0.30, 0.30, 0.2],
-        "upperleg01_L" : [0.11, 0.11, 0.2 ],
-        "upperleg01_R" : [0.11, 0.11, 0.2 ],
-        "upperleg02_L" : [0.11, 0.11, 0.22, (0, 0.1, 0)],
-        "upperleg02_R" : [0.11, 0.11, 0.22, (0, 0.1, 0)],
+        "upperleg01_L" : [0.11, 0.11],
+        "upperleg01_R" : [0.11, 0.11],
+        "upperleg02_L" : [0.11, 0.11],
+        "upperleg02_R" : [0.11, 0.11],
         "lowerleg01_L" : [0.10, 0.10],
         "lowerleg01_R" : [0.10, 0.10],
         "lowerleg02_L" : [0.10, 0.10],
@@ -58,7 +58,7 @@ template = {
         "finger4-2_L": [finger_dim_x, finger_dim_z, 0.05],
         "finger5-2_R": [finger_dim_x*0.75, finger_dim_z, 0.03],
         "finger5-2_L": [finger_dim_x*0.75, finger_dim_z, 0.03],
-    },
+        },
     'constraints': [
         [ 'root', 'spine04', [-20,35,-15,15,-15,15,True] ],
         [ 'spine04', 'spine03', [-25,40,-20,20,-24,24,True] ],
@@ -68,10 +68,10 @@ template = {
         [ 'neck01', 'neck02', [-17,12,-22,22,-10,10,True] ],
         [ 'neck02', 'neck03', [-17,12,-22,22,-10,10,True] ],
         [ 'neck03', 'head', [-27,25,-22,22,-20,20,True] ],
-        [ 'root', 'upperleg01_L', [-75,135,-1,1,-60,60,True] ],
-        [ 'root', 'upperleg01_R', [-75,135,-1,1,-60,60,True] ],
-        [ 'upperleg01_L', 'upperleg02_L', [0,0,-55,55,0,0,True] ],
-        [ 'upperleg01_R', 'upperleg02_R', [0,0,-55,55,0,0,True] ],
+        [ 'root', 'upperleg01_L', [-75,135,0,0,-60,60,True] ],
+        [ 'root', 'upperleg01_R', [-75,135,0,0,-60,60,True] ],
+        [ 'upperleg01_L', 'upperleg02_L', [-5,5,-45,45,0,0,True] ],
+        [ 'upperleg01_R', 'upperleg02_R', [-5,5,-45,45,0,0,True] ],
         [ 'upperleg02_R', 'lowerleg01_R', [-200,1,-5,5,0,0,True] ],
         [ 'upperleg02_L', 'lowerleg01_L', [-200,1,-5,5,0,0,True] ],
         [ 'lowerleg01_R', 'lowerleg02_R', [0,0,-12,12,0,0,True] ],
@@ -119,7 +119,7 @@ template = {
         [ 'finger5-1_L', 'finger5-2_L', [-70,10,-1,1,-1,1,True] ],
 
 
-    ],
+        ],
     'stiffness_map': [
         [0.05, ["root", "spine04", "spine03", "spine02", "spine01"]],
         [0.05,  ["spine02", "spine01", "neck01", "neck02", "neck03"]],
@@ -131,5 +131,9 @@ template = {
         [0.6,  ["upperarm01_L", "upperarm02_L", "upperarm01_R", "upperarm02_R", "lowerarm01_L", "lowerarm02_L", "lowerarm01_R", "lowerarm02_R"], 25],
         [0.6,  ["upperleg01_L", "upperleg02_L", "upperleg01_R", "upperleg02_R", "lowerleg01_L", "lowerleg02_L", "lowerleg01_R", "lowerleg02_R"], 25],
         #[0.6, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
+    ],
+    'collision_group_ext': [
+        'upperarm01_R',
+        'upperarm01_L'
     ]
 }
