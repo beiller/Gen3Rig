@@ -622,7 +622,7 @@ def set_spine_stiffness_physpose_rig(self):
 def set_shoulder_stiffness_physpose_rig(self):
     poserig = get_poserig()
     armature = get_armature()
-    damping_setting = armature.phys_pose_spine_stiffness
+    damping_setting = armature.phys_pose_shoulder_stiffness
     new_stiffness = list(template.template['stiffness_map'][3])
     new_stiffness[0] = damping_setting
     poserig.apply_stiffness(new_stiffness)
