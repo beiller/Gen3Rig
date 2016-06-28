@@ -619,6 +619,16 @@ def set_spine_stiffness_physpose_rig(self):
     return True, "Success"
 
 
+def set_shoulder_stiffness_physpose_rig(self):
+    poserig = get_poserig()
+    armature = get_armature()
+    damping_setting = armature.phys_pose_spine_stiffness
+    new_stiffness = list(template.template['stiffness_map'][3])
+    new_stiffness[0] = damping_setting
+    poserig.apply_stiffness(new_stiffness)
+    return True, "Success"
+
+
 def draw_bounds_physpose_rig(self):
     poserig = get_poserig()
     poserig.draw_phys_objects('BOUNDS')
@@ -652,6 +662,7 @@ UnpinPhysObject = create_operator_class('UnpinPhysObject', "object.unpin_phys_ob
 ResetPhysPoseRig = create_operator_class('ResetPhysPoseRig', "object.reset_physpose_rig", "ResetPhysPoseRig", {'REGISTER', 'UNDO'}, reset_physpose_rig)
 SetDampingPhysPoseRig = create_operator_class('SetDampingPhysPoseRig', "object.set_damping_physpose_rig", "SetDampingPhysPoseRig", {'REGISTER', 'UNDO'}, set_damping_physpose_rig)
 SetSpineStiffnessPhysPoseRig = create_operator_class('SetSpineStiffnessPhysPoseRig', "object.set_spine_stiffness_physpose_rig", "SetSpineStiffnessPhysPoseRig", {'REGISTER', 'UNDO'}, set_spine_stiffness_physpose_rig)
+SetShoulderStiffnessPhysPoseRig = create_operator_class('SetShoulderStiffnessPhysPoseRig', "object.set_shoulder_stiffness_physpose_rig", "SetShoulderStiffnessPhysPoseRig", {'REGISTER', 'UNDO'}, set_shoulder_stiffness_physpose_rig)
 DrawBoundsPhysPoseRig = create_operator_class('DrawBoundsPhysPoseRig', "object.draw_bounds_physpose_rig", "DrawBoundsPhysPoseRig", {'REGISTER', 'UNDO'}, draw_bounds_physpose_rig)
 DrawFullPhysPoseRig = create_operator_class('DrawFullPhysPoseRig', "object.draw_full_physpose_rig", "DrawFullPhysPoseRig", {'REGISTER', 'UNDO'}, draw_full_physpose_rig)
 SetCollisionMesh = create_operator_class('SetCollisionMesh', "object.collide_mesh", "SetCollisionMesh", {'REGISTER', 'UNDO'}, collide_mesh)
@@ -681,6 +692,9 @@ class PhysPosePanel(bpy.types.Panel):
             row2 = layout.row()
             row2.prop(armature, 'phys_pose_spine_stiffness', slider=True)
             row2.operator("object.set_spine_stiffness_physpose_rig", text='Set Spine Stiffness')
+            row2 = layout.row()
+            row2.prop(armature, 'phys_pose_shoulder_stiffness', slider=True)
+            row2.operator("object.set_shoulder_stiffness_physpose_rig", text='Set Shoulder Stiffness')
 
         row = layout.row()
         row.operator("object.draw_bounds_physpose_rig", text='Draw As Bounds')
@@ -704,6 +718,7 @@ def register():
     bpy.types.Object.phys_pose_data = bpy.props.StringProperty(name = "PhysPoseData")
     bpy.types.Object.phys_pose_damping = bpy.props.FloatProperty(name = "PhysPoseDamping", default=1.0, min=0.0, max=1.0)
     bpy.types.Object.phys_pose_spine_stiffness = bpy.props.FloatProperty(name = "PhysPoseSpineStiffness", default=0.05, min=0.0, max=1.0)
+    bpy.types.Object.phys_pose_shoulder_stiffness = bpy.props.FloatProperty(name = "PhysPoseShoulderStiffness", default=0.25, min=0.0, max=1.0)
 
 
 def unregister():
