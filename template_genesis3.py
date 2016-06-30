@@ -2,7 +2,7 @@ __author__ = 'bill'
 
 template = {
     'bones': {
-        "pelvis" : [0.27, 0.18, None, (0.0, -0.16, -0.02), True],
+        "pelvis" : [0.30, 0.30, None, (0.0, -0.16, -0.02), True],
         "abdomenLower" : [0.23, 0.17, None, None, True],
         "abdomenUpper" : [0.23, 0.16],
         "chestLower" : [0.28, 0.3, 0.13],
@@ -63,24 +63,24 @@ template = {
         [ 'chestUpper', 'neckLower', [-15,30,-22,22,-40,40,True] ],
         [ 'neckLower', 'neckUpper', [-17,12,-22,22,-10,10,True] ],
         [ 'neckUpper', 'head', [-27,25,-22,22,-20,20,True] ],
-        [ 'chestUpper', 'Collar.L', [-26,17,-30,30,-60,60,True] ],
-        [ 'chestUpper', 'Collar.R', [-17,26,-30,30,-60,60,True] ],
-        [ 'Collar.L', 'ShldrBend.L', [-70,135,-10,10,-110,110,True] ],
-        [ 'Collar.R', 'ShldrBend.R', [-70,135,-10,10,-110,110,True] ],
-        [ 'pelvis', 'ThighBend.L', [-115,35,-20,20,-85,20,True] ],
-        [ 'pelvis', 'ThighBend.R', [-115,35,-20,20,-25,85,True] ],
-        [ 'ThighBend.L', 'ThighTwist.L', [0,0,-55,55,0,0,True] ],
-        [ 'ThighBend.R', 'ThighTwist.R', [0,0,-55,55,0,0,True] ],
+        [ 'chestUpper', 'Collar.L', [-26,17,-30,30,-50,10,True] ],
+        [ 'chestUpper', 'Collar.R', [-17,26,-30,30,-10,50,True] ],
+        [ 'Collar.L', 'ShldrBend.L', [-40,110,-0,0,-35,85,True] ],
+        [ 'Collar.R', 'ShldrBend.R', [-110,40,-0,0,-85,35,True] ],
+        [ 'pelvis', 'ThighBend.L', [-60,140,-0,0,-25,85,True] ],
+        [ 'pelvis', 'ThighBend.R', [-60,140,-0,0,-85,25,True] ],
+        [ 'ThighBend.L', 'ThighTwist.L', [0,0,-75,75,0,0,True] ],
+        [ 'ThighBend.R', 'ThighTwist.R', [0,0,-75,75,0,0,True] ],
         [ 'ShldrBend.L', 'ShldrTwist.L', [0,0,-95,80,0,0,True] ],
         [ 'ShldrBend.R', 'ShldrTwist.R', [0,0,-95,80,0,0,True] ],
         [ 'ForearmBend.L', 'ForearmTwist.L', [0,0,-90,80,0,0,True] ],
         [ 'ForearmBend.R', 'ForearmTwist.R', [0,0,-90,80,0,0,True] ],
-        [ 'ThighTwist.R', 'Shin.R', [0,0,-12,12,0,140,True] ],
-        [ 'ThighTwist.L', 'Shin.L', [0,0,-12,12,-140,0,True] ],
+        [ 'ThighTwist.R', 'Shin.R', [-140,10,-12,12,0,0,True] ],
+        [ 'ThighTwist.L', 'Shin.L', [-140,10,-12,12,0,0,True] ],
         [ 'ShldrTwist.R', 'ForearmBend.R', [-135,20,0,0,0,0,True] ],
         [ 'ShldrTwist.L', 'ForearmBend.L', [-135,20,0,0,0,0,True] ],
-        [ 'ForearmTwist.L', 'Hand.L', [-40,40,-40,40,-90,90,True] ],
-        [ 'ForearmTwist.R', 'Hand.R', [-40,40,-40,40,-90,90,True] ],
+        [ 'ForearmTwist.L', 'Hand.L', [-10,10,-30,30,-80,70,True] ],
+        [ 'ForearmTwist.R', 'Hand.R', [-10,10,-30,30,-70,80,True] ],
         [ 'Shin.L', 'Foot.L', [-75,40,-12,12,-10,10,True] ],
         [ 'Shin.R', 'Foot.R', [-75,40,-12,12,-10,10,True] ],
         #HAND BONES---------------------------------------------------------------
@@ -110,7 +110,7 @@ template = {
         [0.05, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower"]],
         [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
         [0.2,  ["head","neckUpper","neckLower"]],
-        [0.25, ["chestUpper","Collar.R","Collar.L"]]
+        [1.0, ["chestUpper","Collar.R","Collar.L"]]
     ],
     'minimize_twist': [
         [0.6, ["ShldrBend.R","ShldrTwist.R","ShldrBend.L","ShldrTwist.L"], 25],
@@ -119,6 +119,8 @@ template = {
     ],
     'collision_group_ext': [
         'ShldrBend.L',
-        'ShldrBend.R'
+        'ShldrBend.R',
+        'Collar.L',
+        'Collar.R'
     ]
 }

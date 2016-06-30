@@ -112,7 +112,7 @@ class PhysObject():
         self.phys_object.rigid_body.angular_damping = 0.5
         self.phys_object.rigid_body.linear_damping = 0.5
         self.phys_object.rigid_body.use_margin = True
-        self.phys_object.rigid_body.collision_margin = 0.002
+        self.phys_object.rigid_body.collision_margin = 0.003
         sx, sy, sz = self.phys_object.dimensions
         """
             470 is an adjustment factor because mass is calculated based on bounds
