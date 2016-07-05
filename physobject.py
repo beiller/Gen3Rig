@@ -325,6 +325,7 @@ class PhysPoseRig():
 
     def build_chain(self, start_bone_name, attach_bone_name, shrinkwrap_name=None, chain_length=90, bone_size=0.1, bone_dof=(2, 2, 2), density=1100):
         if start_bone_name not in self.armature.pose.bones:
+            print("Error - start bone not found in chain - %s" % start_bone_name)
             return False
 
         phys_objects = []
@@ -534,6 +535,9 @@ def create_rig():
     if custom_template is not None and armature_name in custom_template.templates:
         imp.reload(custom_template)
         custom_template.templates[armature_name](poserig)
+    else:
+        print("No custom template found", custom_template, armature_name, custom_template.templates)
+
     poserig.hide_constraints()
     poserig.draw_phys_objects('BOUNDS')
     if 'stiffness_map' in template.template:

@@ -56,7 +56,7 @@ template = {
         "Thumb2.L" : [0.015, 0.015, 0.08, (0, 0.012, 0) ]
     },
     'constraints': [
-        [ 'pelvis', 'abdomenLower', [-20,35,-15,15,-15,15,True] ],
+        [ 'pelvis', 'abdomenLower', [-32.5,47.5,-15,15,-15,15,True] ],
         [ 'abdomenLower', 'abdomenUpper', [-25,40,-20,20,-24,24,True] ],
         [ 'abdomenUpper', 'chestLower', [-25,35,-12,12,-20,20,True] ],
         [ 'chestLower', 'chestUpper', [-15,15,-10,10,-10,10,True] ],
@@ -67,8 +67,8 @@ template = {
         [ 'chestUpper', 'Collar.R', [-17,26,-30,30,-10,50,True] ],
         [ 'Collar.L', 'ShldrBend.L', [-40,110,-0,0,-35,85,True] ],
         [ 'Collar.R', 'ShldrBend.R', [-110,40,-0,0,-85,35,True] ],
-        [ 'pelvis', 'ThighBend.L', [-60,140,-0,0,-25,85,True] ],
-        [ 'pelvis', 'ThighBend.R', [-60,140,-0,0,-85,25,True] ],
+        [ 'pelvis', 'ThighBend.L', [-47.5,127.5,-0,0,-25,85,True] ],
+        [ 'pelvis', 'ThighBend.R', [-47.5,127.5,-0,0,-85,25,True] ],
         [ 'ThighBend.L', 'ThighTwist.L', [0,0,-75,75,0,0,True] ],
         [ 'ThighBend.R', 'ThighTwist.R', [0,0,-75,75,0,0,True] ],
         [ 'ShldrBend.L', 'ShldrTwist.L', [0,0,-95,80,0,0,True] ],
