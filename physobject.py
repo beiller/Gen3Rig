@@ -1,5 +1,7 @@
 import bpy
 import math
+
+import time
 from mathutils import Vector, Matrix
 import json
 import imp
@@ -243,7 +245,8 @@ class PhysPoseRig():
             'constraints': [],
             'armature': self.armature.name,
             'shrinkwrap_object_name': self.shrinkwrap_object_name,
-            'stored_pose': {}
+            'stored_pose': {},
+            'saved_state': {}
         }
         for phys_object in self.phys_objects:
             po = {
@@ -253,6 +256,7 @@ class PhysPoseRig():
             }
             data['phys_objects'].append(po)
             data['stored_pose'][phys_object.phys_object.name] = [(x[0], x[1], x[2], x[3]) for x in self.rest_phys_matrix[phys_object.phys_object.name]]
+            data['saved_state'][phys_object.pose_bone.name] = [(x[0], x[1], x[2], x[3]) for x in self.saved_state[phys_object.pose_bone.name]]
         for constraint in self.constraints:
             co = {
                 'phys_object1': constraint.phys_object1.phys_object.name,
@@ -274,6 +278,7 @@ class PhysPoseRig():
             self.phys_objects.append(po)
             phys_obj_dict[po.get_name()] = po
             self.rest_phys_matrix[po.get_name()] = Matrix(data['stored_pose'][po.get_name()])
+            self.saved_state[pose_bone_name] = Matrix(data['saved_state'][pose_bone_name])
         for con in data['constraints']:
             self.constraints.append(Constraint(phys_obj_dict[con['phys_object1']], phys_obj_dict[con['phys_object2']], con['parameters']))
 
@@ -286,6 +291,7 @@ class PhysPoseRig():
         self.shrinkwrap_object_name = None
         self.rest_phys_matrix = {}
         self.template = template
+        self.saved_state = {}
 
     def set_rest_matrix(self):
         for phys_object in self.phys_objects:
@@ -382,7 +388,20 @@ class PhysPoseRig():
             iterations = m[2]
         self.set_stiffness(m[0], m[1], iterations)
 
+    def save_pose_matrix_state(self):
+        for bone in self.armature.pose.bones:
+            mat = Matrix()
+            mat[0][0:4] = (bone.x_axis[0], bone.y_axis[0], bone.z_axis[0], bone.head[0])
+            mat[1][0:4] = (bone.x_axis[1], bone.y_axis[1], bone.z_axis[1], bone.head[1])
+            mat[2][0:4] = (bone.x_axis[2], bone.y_axis[2], bone.z_axis[2], bone.head[2])
+            self.saved_state[bone.name] = mat
+            bone.location = (0, 0, 0)
+            bone.rotation_quaternion = (1, 0, 0, 0)
+            bone.scale = (1, 1, 1)
+        bpy.context.scene.update()
+
     def create_rig(self, shrinkwrap_object_name=None, damping=1.0):
+        self.save_pose_matrix_state()
         bones_to_create = self.template['bones']
         constraints = self.template['constraints']
 
@@ -398,12 +417,17 @@ class PhysPoseRig():
             con = Constraint(phys_map[bone_name1], phys_map[bone_name2], parameters)
             self.constraints.append(con)
 
+        if custom_template is not None and self.armature.name in custom_template.templates:
+            imp.reload(custom_template)
+            custom_template.templates[self.armature.name](self)
+        else:
+            print("No custom template found", custom_template, self.armature.name, custom_template.templates)
+
         if 'collision_group_ext' in self.template:
             collision_group_ext = self.template['collision_group_ext']
             bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.select_all(action='DESELECT')
             for phys_obj in self.phys_objects:
-                #PHYS-GenesisRig3-Foot.L
                 mybone = phys_obj.get_name().split('~')[-1]
                 if mybone in collision_group_ext:
                     number_of_layers = len(phys_obj.phys_object.rigid_body.collision_groups)
@@ -412,7 +436,21 @@ class PhysPoseRig():
         self.set_rest_matrix()
         if 'minimize_twist' in self.template:
             self.apply_stiffness_map(self.template['minimize_twist'])
+
+        self.hide_constraints()
+        self.draw_phys_objects('BOUNDS')
+        if 'stiffness_map' in template.template:
+            self.apply_stiffness_map(template.template['stiffness_map'])
+        rigs[self.armature.name] = self
+        self.armature.phys_pose_data = rigs[self.armature.name].serialize()
+        bpy.context.scene.frame_set(0)
         return True, "Success"
+
+    def apply_saved_state(self):
+        for phys in self.phys_objects:
+            bone_name = phys.phys_object.name.split('~')[-1]
+            if bone_name in self.saved_state:
+                phys.phys_object.matrix_world = self.saved_state[bone_name].copy()
 
     def delete_rig(self):
         do_hide = False
@@ -532,18 +570,6 @@ def create_rig():
     poserig = PhysPoseRig(bpy.data.objects[armature_name], template.template)
     poserig.clear_constraints()
     poserig.create_rig(shrink_wrap_name)
-    if custom_template is not None and armature_name in custom_template.templates:
-        imp.reload(custom_template)
-        custom_template.templates[armature_name](poserig)
-    else:
-        print("No custom template found", custom_template, armature_name, custom_template.templates)
-
-    poserig.hide_constraints()
-    poserig.draw_phys_objects('BOUNDS')
-    if 'stiffness_map' in template.template:
-        poserig.apply_stiffness_map(template.template['stiffness_map'])
-    rigs[armature_name] = poserig
-    ob.phys_pose_data = rigs[armature_name].serialize()
     return True, "Success"
 
 
@@ -659,6 +685,12 @@ def collide_hull(self):
     return True, "Success"
 
 
+def apply_saved_state(self):
+    poserig = get_poserig()
+    poserig.apply_saved_state()
+    return True, "Success"
+
+
 GeneratePhysPoseRig = create_operator_class('GeneratePhysPoseRig', "object.generate_physpose_rig", "Generate PhysPose Rig", {'REGISTER', 'UNDO'}, generate_physpose_rig)
 DeletePhysPoseRig = create_operator_class('DeletePhysPoseRig', "object.delete_physpose_rig", "Delete PhysPose Rig", {'REGISTER', 'UNDO'}, delete_physpose_rig)
 PinPhysObject = create_operator_class('PinPhysObject', "object.pin_phys_object", "PinPhysObject", {'REGISTER', 'UNDO'}, pin_phys_object)
@@ -671,6 +703,7 @@ DrawBoundsPhysPoseRig = create_operator_class('DrawBoundsPhysPoseRig', "object.d
 DrawFullPhysPoseRig = create_operator_class('DrawFullPhysPoseRig', "object.draw_full_physpose_rig", "DrawFullPhysPoseRig", {'REGISTER', 'UNDO'}, draw_full_physpose_rig)
 SetCollisionMesh = create_operator_class('SetCollisionMesh', "object.collide_mesh", "SetCollisionMesh", {'REGISTER', 'UNDO'}, collide_mesh)
 SetCollisionHull = create_operator_class('SetCollisionHull', "object.collide_hull", "SetCollisionHull", {'REGISTER', 'UNDO'}, collide_hull)
+ApplySavedState = create_operator_class('ApplySavedState', "object.apply_saved_state", "ApplySavedState", {'REGISTER', 'UNDO'}, apply_saved_state)
 
 
 class PhysPosePanel(bpy.types.Panel):
@@ -686,6 +719,7 @@ class PhysPosePanel(bpy.types.Panel):
         armature = get_armature()
         if armature is not None:
             layout.operator("object.delete_physpose_rig", text='Delete PhysPose Rig')
+            layout.operator("object.apply_saved_state", text='Apply Saved Pose')
             #layout.label("Keyframe Tools")
             #layout.operator("object.set_rotations_physpose_rig", text='Apply PhysPose to Rig')
             #layout.operator("object.unmute_constraints_physpose_rig", text='Unmute Constraints on PhysPose Rig')
