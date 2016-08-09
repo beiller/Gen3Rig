@@ -15,6 +15,11 @@ except ImportError:
 from . import template as makehuman_template
 from . import template_genesis3 as genesis3_template
 
+templates = [
+    ('MakeHuman v1', makehuman_template),
+    ('Genesis 3 Female', genesis3_template)
+]
+
 
 class PhysObject():
     def __init__(self, armature, pose_bone, parameters=None, shrinkwrap_object_name=None, density=1100):
@@ -400,6 +405,15 @@ class PhysPoseRig():
             bone.scale = (1, 1, 1)
         bpy.context.scene.update()
 
+    def move_physobj_collision_layer(self, ob_name_list, layer_number=1):
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        for phys_obj in self.phys_objects:
+            mybone = phys_obj.get_name().split('~')[-1]
+            if mybone in ob_name_list:
+                number_of_layers = len(phys_obj.phys_object.rigid_body.collision_groups)
+                phys_obj.phys_object.rigid_body.collision_groups = [i in {layer_number} for i in range(number_of_layers)]
+
     def create_rig(self, shrinkwrap_object_name=None, damping=1.0):
         self.save_pose_matrix_state()
         bones_to_create = self.template['bones']
@@ -409,7 +423,7 @@ class PhysPoseRig():
         phys_map = {}
         for bone_name, params in bones_to_create.items():
             po = PhysObject(self.armature, self.armature.pose.bones[bone_name], params, shrinkwrap_object_name)
-            self.phys_objects.append( po )
+            self.phys_objects.append(po)
             phys_map[bone_name] = po
 
         for constraint in constraints:
@@ -425,13 +439,7 @@ class PhysPoseRig():
 
         if 'collision_group_ext' in self.template:
             collision_group_ext = self.template['collision_group_ext']
-            bpy.ops.object.mode_set(mode='OBJECT')
-            bpy.ops.object.select_all(action='DESELECT')
-            for phys_obj in self.phys_objects:
-                mybone = phys_obj.get_name().split('~')[-1]
-                if mybone in collision_group_ext:
-                    number_of_layers = len(phys_obj.phys_object.rigid_body.collision_groups)
-                    phys_obj.phys_object.rigid_body.collision_groups = [i in {1} for i in range(number_of_layers)]
+            self.move_physobj_collision_layer(collision_group_ext, layer_number=1)
 
         self.set_rest_matrix()
         if 'minimize_twist' in self.template:
@@ -439,17 +447,18 @@ class PhysPoseRig():
 
         self.hide_constraints()
         self.draw_phys_objects('BOUNDS')
-        if 'stiffness_map' in template.template:
-            self.apply_stiffness_map(template.template['stiffness_map'])
+        if 'stiffness_map' in self.template:
+            self.apply_stiffness_map(self.template['stiffness_map'])
         rigs[self.armature.name] = self
         self.armature.phys_pose_data = rigs[self.armature.name].serialize()
         bpy.context.scene.frame_set(0)
         return True, "Success"
 
-    def apply_saved_state(self):
+    def apply_saved_state(self, set_kinematic=False):
         for phys in self.phys_objects:
             bone_name = phys.phys_object.name.split('~')[-1]
             if bone_name in self.saved_state:
+                phys.phys_object.rigid_body.kinematic = set_kinematic
                 phys.phys_object.matrix_world = self.saved_state[bone_name].copy()
 
     def delete_rig(self):
@@ -540,12 +549,10 @@ def get_armature_from_mesh(mesh_object):
                     return modifier.object
     return None
 
-#template = makehuman_template
-template = genesis3_template
-
 
 def get_poserig():
     ob = get_armature()
+    template = templates[bpy.context.scene['phys_pose_template']][1]
     poserig = PhysPoseRig(ob, template)
     poserig.deserialize(ob.phys_pose_data)
     return poserig
@@ -566,6 +573,7 @@ def create_rig():
     if not shrink_wrap_name:
         return False, "Could not find mesh"
     armature_name = ob.name
+    template = templates[bpy.context.scene['phys_pose_template']][1]
     imp.reload(template)
     poserig = PhysPoseRig(bpy.data.objects[armature_name], template.template)
     poserig.clear_constraints()
@@ -644,7 +652,7 @@ def generate_set_stiffness_function(index, attrname):
         poserig = get_poserig()
         armature = get_armature()
         damping_setting = getattr(armature, attrname)
-        new_stiffness = list(template.template['stiffness_map'][index])
+        new_stiffness = list(poserig.template.template['stiffness_map'][index])
         new_stiffness[0] = damping_setting
         poserig.apply_stiffness(new_stiffness)
         return True, "Success"
@@ -704,16 +712,25 @@ class PhysPosePanel(bpy.types.Panel):
     bl_label = "PhysPose Tools"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
+    myprop = None
 
     def draw(self, context):
         ob = context.object
         layout = self.layout
 
+        layout.prop(bpy.context.scene, 'phys_pose_template')
         layout.operator("object.generate_physpose_rig", text='Generate PhysPose Rig')
         armature = get_armature()
         if armature is not None:
             layout.operator("object.delete_physpose_rig", text='Delete PhysPose Rig')
-            layout.operator("object.apply_saved_state", text='Apply Saved Pose')
+        layout.label("Pinning")
+        layout.operator("object.pin_phys_object", text='Pin Object(s)')
+        layout.operator("object.unpin_phys_object", text='Unpin Object(s)')
+        if armature is not None:
+            layout.label("Poses")
+            layout.prop(bpy.context.scene, 'pose_lib_selector')
+            layout.operator("object.apply_saved_state", text='Apply Pose')
+            layout.operator("object.reset_physpose_rig", text='Reset to Base Pose')
             #layout.label("Keyframe Tools")
             #layout.operator("object.set_rotations_physpose_rig", text='Apply PhysPose to Rig')
             #layout.operator("object.unmute_constraints_physpose_rig", text='Unmute Constraints on PhysPose Rig')
@@ -737,11 +754,6 @@ class PhysPosePanel(bpy.types.Panel):
         row2 = layout.row()
         row2.operator("object.collide_mesh", text='Collide as Mesh')
         row2.operator("object.collide_hull", text='Collide as Convex Hull')
-        layout.label("PhysRig Tools")
-        if armature is not None:
-            layout.operator("object.reset_physpose_rig", text='Reset PhysPose Rig to Base Pose')
-        layout.operator("object.pin_phys_object", text='Pin Object(s)')
-        layout.operator("object.unpin_phys_object", text='Unpin Object(s)')
 
 
 def register():
@@ -755,6 +767,14 @@ def register():
     bpy.types.Object.phys_pose_spine_stiffness = bpy.props.FloatProperty(name = "PhysPoseSpineStiffness", default=0.05, min=0.0, max=1.0)
     bpy.types.Object.phys_pose_neck_stiffness = bpy.props.FloatProperty(name = "PhysPoseNeckStiffness", default=0.2, min=0.0, max=1.0)
     bpy.types.Object.phys_pose_shoulder_stiffness = bpy.props.FloatProperty(name = "PhysPoseShoulderStiffness", default=0.25, min=0.0, max=1.0)
+    bpy.types.Scene.phys_pose_template = bpy.props.EnumProperty(
+        items=[(x[0], x[0], x[0]) for x in templates],
+        name="Template"
+    )
+    def get_poselib_names(self, context):
+        armature = get_armature()
+        return [(x.name, x.name, x.name) for x in armature.pose_library.pose_markers]
+    bpy.types.Scene.pose_lib_selector = bpy.props.EnumProperty(items=get_poselib_names, name="Pose")
 
 
 def unregister():
@@ -768,6 +788,7 @@ def unregister():
     del bpy.types.Object.phys_pose_spine_stiffness
     del bpy.types.Object.phys_pose_neck_stiffness
     del bpy.types.Object.phys_pose_shoulder_stiffness
+    del bpy.types.Object.pose_lib_selector
 
 
 if __name__ == "__main__":

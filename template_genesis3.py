@@ -107,20 +107,18 @@ template = {
         [ 'Thumb1.L', 'Thumb2.L', [-20,20,-20,20,-20,20,True] ]
     ],
     'stiffness_map': [
-        [0.05, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower"]],
+        [0.25, ["pelvis","abdomenLower","abdomenUpper","chestLower","chestUpper","neckLower"]],
         [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
-        [0.2,  ["head","neckUpper","neckLower"]],
-        [1.0, ["chestUpper","Collar.R","Collar.L"]]
+        [0.75,  ["head","neckUpper","neckLower"]],
+        [0.5, ["chestUpper","Collar.R","Collar.L"]]
     ],
     'minimize_twist': [
-        [0.6, ["ShldrBend.R","ShldrTwist.R","ShldrBend.L","ShldrTwist.L"], 25],
-        [0.6, ["ThighBend.R","ThighTwist.R","ThighBend.L","ThighTwist.L"], 25],
-        [0.6, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
+        [0.9, ["ShldrBend.R","ShldrTwist.R","ShldrBend.L","ShldrTwist.L"], 25],
+        [0.9, ["ThighBend.R","ThighTwist.R","ThighBend.L","ThighTwist.L"], 25],
+        [0.9, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
     ],
     'collision_group_ext': [
         'ShldrBend.L',
-        'ShldrBend.R',
-        'Collar.L',
-        'Collar.R'
+        'ShldrBend.R'
     ]
 }
