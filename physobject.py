@@ -181,14 +181,14 @@ class Constraint:
         p = self.parameters
         con = self.bone_constraint
         for i in range(3):
-            rmin = p[i]
-            rmax = p[i+1]
+            rmin = p[i*2]
+            rmax = p[i*2+1]
             dist = rmax - rmin
             dist *= ((scalars[i] + 1.0) / 2.0)
             pos = rmin + dist
 
-            p[i] = max(pos - 5.0, rmin)
-            p[i+1] = min(pos + 5.0, rmax)
+            p[i*2] = max(pos - 5.0, rmin)
+            p[i*2+1] = min(pos + 5.0, rmax)
         self._setup_constraint(con, p, 1.0)
 
     def _setup_constraint(self, con, p, scalar = 1.0):
@@ -307,7 +307,7 @@ class PhysPoseRig():
             return False
         for constraint in self.constraints:
             if bones is None\
-                    or (constraint.phys_object1.pose_bone.name in bones and constraint.phys_object2.pose_bone.name in bones):
+                    or (constraint.phys_object1.pose_bone.name in bones or constraint.phys_object2.pose_bone.name in bones):
                 constraint.point_constraint(scalars)
                 if override_iterations is not None:
                     constraint.bone_constraint.rigid_body_constraint.use_override_solver_iterations = True
@@ -690,6 +690,39 @@ def apply_saved_state(self):
     return True, "Success"
 
 
+def point_fingers(self):
+    poserig = get_poserig()
+    scalars = [-0.5, -0.5, -0.5]
+    bones = [
+        "Index1.R",
+        "Mid1.R",
+        "Ring1.R",
+        "Pinky1.R",
+        "Thumb1.R",
+        "Index2.R",
+        "Mid2.R",
+        "Ring2.R",
+        "Pinky2.R",
+        "Thumb2.R",
+    ]
+    poserig.set_rotations(scalars, bones, 30)
+    scalars = [0.5, 0.5, 0.5]
+    bones = [
+        "Index1.L",
+        "Mid1.L",
+        "Ring1.L",
+        "Pinky1.L",
+        "Thumb1.L",
+        "Index2.L",
+        "Mid2.L",
+        "Ring2.L",
+        "Pinky2.L",
+        "Thumb2.L",
+    ]
+    poserig.set_rotations(scalars, bones, 30)
+    return True, "Success"
+
+
 GeneratePhysPoseRig = create_operator_class('GeneratePhysPoseRig', "object.generate_physpose_rig", "Generate PhysPose Rig", {'REGISTER', 'UNDO'}, generate_physpose_rig)
 DeletePhysPoseRig = create_operator_class('DeletePhysPoseRig', "object.delete_physpose_rig", "Delete PhysPose Rig", {'REGISTER', 'UNDO'}, delete_physpose_rig)
 PinPhysObject = create_operator_class('PinPhysObject', "object.pin_phys_object", "PinPhysObject", {'REGISTER', 'UNDO'}, pin_phys_object)
@@ -706,6 +739,7 @@ DrawFullPhysPoseRig = create_operator_class('DrawFullPhysPoseRig', "object.draw_
 SetCollisionMesh = create_operator_class('SetCollisionMesh', "object.collide_mesh", "SetCollisionMesh", {'REGISTER', 'UNDO'}, collide_mesh)
 SetCollisionHull = create_operator_class('SetCollisionHull', "object.collide_hull", "SetCollisionHull", {'REGISTER', 'UNDO'}, collide_hull)
 ApplySavedState = create_operator_class('ApplySavedState', "object.apply_saved_state", "ApplySavedState", {'REGISTER', 'UNDO'}, apply_saved_state)
+#PointFingers = create_operator_class('PointFingers', "object.point_fingers", "PointFingers", {'REGISTER', 'UNDO'}, point_fingers)
 
 
 class PhysPosePanel(bpy.types.Panel):
@@ -731,6 +765,7 @@ class PhysPosePanel(bpy.types.Panel):
             layout.prop(bpy.context.scene, 'pose_lib_selector')
             layout.operator("object.apply_saved_state", text='Apply Pose')
             layout.operator("object.reset_physpose_rig", text='Reset to Base Pose')
+            layout.operator("object.point_fingers", text='Clench Fingers')
             #layout.label("Keyframe Tools")
             #layout.operator("object.set_rotations_physpose_rig", text='Apply PhysPose to Rig')
             #layout.operator("object.unmute_constraints_physpose_rig", text='Unmute Constraints on PhysPose Rig')
@@ -773,6 +808,8 @@ def register():
     )
     def get_poselib_names(self, context):
         armature = get_armature()
+        if armature.pose_library is None:
+            return [('No Poselib', 'No Poselib', 'No Poselib')]
         return [(x.name, x.name, x.name) for x in armature.pose_library.pose_markers]
     bpy.types.Scene.pose_lib_selector = bpy.props.EnumProperty(items=get_poselib_names, name="Pose")
 
