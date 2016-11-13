@@ -24,7 +24,7 @@ I used a custom template for my example video if you have seen it. The hair is a
 Make a file in the root directory of this plugin, called custom_template.py. A function must be created
 that has the same name as the Armature object. Add contents such as this:
 
-`
+~~~~
 def PricessRig(poserig):
     # freedom of movement for the bone chain
     braid_dof = 65.0
@@ -53,4 +53,4 @@ def MyRig2(poserig):
 
 templates['PricessRig'] = PricessRig
 templates['MyRig2'] = MyRig2
-`
+~~~~
