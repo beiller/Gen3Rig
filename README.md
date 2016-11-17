@@ -6,12 +6,21 @@ Will show up in the properties panel. Select armature in object or pose mode and
 # Instructions for Genesis 3
 
 * Import the dae file exported from daz
+    * The armature may not be scaled properly. Use edit mode to fix it's position (morphs that shrink seem to cause this)
+    * The "bone roll" on the legs is wrong for some reason sometimes. To fix, enter edit mode, select all leg bones and set roll to 0 degrees. 
 * Select the armature and click "Convert Genesis 3 rig" in properties panel (at bottom but top of physpose tools)
-* After that the armature will change to a fancier one
-* Make sure under template click "Genesis 3"
-* Select only mesh, then click "Generate Physpose Rig".
+    * An armature is created with shapes, and constraints, but all layers are hidden. Unhide all layers to see the full rig.
+* Make sure under template, select "Genesis 3 Female"
+* Select only the mesh, then click "Generate Physpose Rig".
   * boxes are created which are really convex mesh (click display as shapes button to view the meshes)
   * pin will pin one of the convex meshes
+* Make sure to create a "ground plane" rigid body object or your character will just "fall"
+* Press alt+a (play) to start the simulation
+
+# Hints
+
+* up the frame counter to 300000 (maximum) and also set Rigid Body Cache to 300000 end frame.
+* up steps per second to 100, and solver iterations to 1000 for best results (slow)
 
 # Notes about use on makehuman
 
