@@ -7,9 +7,9 @@ Will show up in the properties panel. Select armature in object or pose mode and
 
 * Import the dae file exported from daz
     * The armature may not be scaled properly. Use edit mode to fix it's position (morphs that shrink seem to cause this)
-    * The "bone roll" on the legs is wrong for some reason sometimes. To fix, enter edit mode, select all leg bones and set roll to 0 degrees. 
 * Select the armature and click "Convert Genesis 3 rig" in properties panel (at bottom but top of physpose tools)
     * An armature is created with shapes, and constraints, but all layers are hidden. Unhide all layers to see the full rig.
+    * The "bone roll" on the legs is wrong for some reason sometimes. To fix, enter edit mode, select all leg bones and set roll to 0 degrees. 
 * Make sure under template, select "Genesis 3 Female"
 * Select only the mesh, then click "Generate Physpose Rig".
   * boxes are created which are really convex mesh (click display as shapes button to view the meshes)
@@ -20,7 +20,8 @@ Will show up in the properties panel. Select armature in object or pose mode and
 # Hints
 
 * up the frame counter to 300000 (maximum) and also set Rigid Body Cache to 300000 end frame.
-* up steps per second to 100, and solver iterations to 1000 for best results (slow)
+* up steps per second to 60, and solver iterations to 500 for best results (slow)
+* click "draw as shapes" button to see concave mesh and debug weird collisions that make it unstable. Try moving things on different collision layers if its seriously messed up.
 
 # Notes about use on makehuman
 
