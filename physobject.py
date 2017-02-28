@@ -437,7 +437,7 @@ class PhysPoseRig():
             imp.reload(custom_template)
             custom_template.templates[self.armature.name](self)
         else:
-            print("No custom template found", custom_template, self.armature.name, custom_template.templates)
+            print("No custom template found", custom_template, self.armature.name)
 
         if 'collision_group_ext' in self.template:
             collision_group_ext = self.template['collision_group_ext']
