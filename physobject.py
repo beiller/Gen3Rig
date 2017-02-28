@@ -19,7 +19,7 @@ from . import template_rigify as rigify_template
 templates = [
     ('MakeHuman v1', makehuman_template),
     ('Genesis 3 Female', genesis3_template),
-    ('Rigify (Pitchypoy)', rigify_template)
+    ('Rigify (Pitchipoy)', rigify_template)
 ]
 
 
