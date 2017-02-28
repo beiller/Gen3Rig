@@ -14,10 +14,12 @@ except ImportError:
 
 from . import template as makehuman_template
 from . import template_genesis3 as genesis3_template
+from . import template_rigify as rigify_template
 
 templates = [
     ('MakeHuman v1', makehuman_template),
-    ('Genesis 3 Female', genesis3_template)
+    ('Genesis 3 Female', genesis3_template),
+    ('Rigify (Pitchypoy)', rigify_template)
 ]
 
 
@@ -441,6 +443,13 @@ class PhysPoseRig():
             collision_group_ext = self.template['collision_group_ext']
             self.move_physobj_collision_layer(collision_group_ext, layer_number=1)
 
+        # MUTE PRE-EXISTING CONSTRAINTS
+        for phys in self.phys_objects:
+            name = phys.phys_object.name
+            for con in phys.pose_bone.constraints:
+                if con.name != 'PHYSPOSE-COPY-LOCATION' and con.name != 'PHYSPOSE-COPY-ROTATION':
+                    con.mute = True
+
         self.set_rest_matrix()
         if 'minimize_twist' in self.template:
             self.apply_stiffness_map(self.template['minimize_twist'])
@@ -765,7 +774,7 @@ class PhysPosePanel(bpy.types.Panel):
             layout.prop(bpy.context.scene, 'pose_lib_selector')
             layout.operator("object.apply_saved_state", text='Apply Pose')
             layout.operator("object.reset_physpose_rig", text='Reset to Base Pose')
-            layout.operator("object.point_fingers", text='Clench Fingers')
+            #layout.operator("object.point_fingers", text='Clench Fingers')
             #layout.label("Keyframe Tools")
             #layout.operator("object.set_rotations_physpose_rig", text='Apply PhysPose to Rig')
             #layout.operator("object.unmute_constraints_physpose_rig", text='Unmute Constraints on PhysPose Rig')

@@ -122,10 +122,9 @@ template = {
         ],
     'stiffness_map': [
         [0.05, ["root", "spine04", "spine03", "spine02", "spine01"]],
-        [0.05,  ["spine02", "spine01", "neck01", "neck02", "neck03"]],
-        #[0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
-        [0.05,  ["head", "neck03"]],
-        #[0.25, ["chestUpper","Collar.R","Collar.L"]]
+        [0.75, ["Hand.R", "Hand.L", "Index1.R", "Mid1.R", "Ring1.R", "Pinky1.R", "Thumb2.R", "Index1.L", "Mid1.L", "Ring1.L", "Pinky1.L", "Thumb2.L"]],
+        [0.05,  ["spine01", "neck01", "neck02", "neck03", "head"]],
+        [0.25, ['shoulder01_R', 'shoulder01_L', 'clavicle_R', 'clavicle_L', 'spine01']]
     ],
     'minimize_twist': [
         [0.6,  ["upperarm01_L", "upperarm02_L", "upperarm01_R", "upperarm02_R", "lowerarm01_L", "lowerarm02_L", "lowerarm01_R", "lowerarm02_R"], 25],
@@ -133,7 +132,7 @@ template = {
         #[0.6, ["ForearmBend.R","ForearmTwist.R","ForearmBend.L","ForearmTwist.L"], 25]
     ],
     'collision_group_ext': [
-        'upperarm01_R',
-        'upperarm01_L'
+        #'upperarm01_R',
+        #'upperarm01_L'
     ]
 }
