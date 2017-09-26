@@ -121,7 +121,7 @@ class PhysObject():
         self.phys_object.rigid_body.angular_damping = 0.5
         self.phys_object.rigid_body.linear_damping = 0.5
         self.phys_object.rigid_body.use_margin = True
-        self.phys_object.rigid_body.collision_margin = 0.003
+        self.phys_object.rigid_body.collision_margin = 0.002
         sx, sy, sz = self.phys_object.dimensions
         """
             470 is an adjustment factor because mass is calculated based on bounds
@@ -130,7 +130,6 @@ class PhysObject():
         self.phys_object.rigid_body.mass = sx * sy * sz * 470 
         self.phys_object.rigid_body.collision_shape = 'CONVEX_HULL'
         #self.phys_object.rigid_body.collision_shape = 'MESH'
-
 
     def shrinkwrap_to_object(self, shrinkwrap_object_name):
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -165,9 +164,11 @@ class PhysObject():
             self.phys_object.rigid_body.angular_damping = angular_damping_setting
             self.phys_object.rigid_body.linear_damping = linear_damping_setting
 
+default_constraint_parameters = [-180, 180, -180, 180, -180, 180, True]
+
 
 class Constraint:
-    def __init__(self, phys_object1, phys_object2, parameters=[-180,180,-180,180,-180,180,True]):
+    def __init__(self, phys_object1, phys_object2, parameters=default_constraint_parameters):
         self.phys_object1 = phys_object1
         self.phys_object2 = phys_object2
         self.parameters = parameters

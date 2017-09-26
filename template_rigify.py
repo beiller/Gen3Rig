@@ -24,8 +24,8 @@ template = {
         "upper_arm_fk.R" : [0.081, 0.081, None, None, True],
         "forearm_fk.L" : [0.081, 0.081],
         "forearm_fk.R" : [0.081, 0.081],
-        "hand_fk.L" : [0.06, 0.045, 0.09],
-        "hand_fk.R" : [0.06, 0.045, 0.09],
+        "hand_fk.L" : [0.06, 0.045, 0.05],
+        "hand_fk.R" : [0.06, 0.045, 0.05],
         # HAND BONES ----------------------------------------------------
         "f_index.01.R": [0.015, 0.015],
         "f_middle.01.R": [0.015, 0.015],
@@ -83,8 +83,8 @@ template = {
         ['tweak_spine', 'thigh_fk.R', [-47.5, 140, -10, 10, -50, 50, True]],
         ['thigh_fk.L', 'shin_fk.L', [-140, 3, -32, 32, 0, 0, True]],
         ['thigh_fk.R', 'shin_fk.R', [-140, 3, -32, 32, 0, 0, True]],
-        ['shin_fk.L', 'foot_fk.L', [-75, 40, -18, 18, -10, 10, True]],
-        ['shin_fk.R', 'foot_fk.R', [-75, 40, -18, 18, -10, 10, True]],
+        ['shin_fk.L', 'foot_fk.L', [-75, 40, -30, 30, -30, 30, True]],
+        ['shin_fk.R', 'foot_fk.R', [-75, 40, -30, 30, -30, 30, True]],
 
         #  DAMMIT HANDS....
 

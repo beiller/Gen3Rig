@@ -1,23 +1,31 @@
 # Gen3Rig
 Convert from genesis 3 DAE export into a IK rig
 
-Will show up in the properties panel. Select armature in object or pose mode and press generate button.
+The UI will show up in the properties panel in the 3D view window.
+ Use the "n" key to toggle the side panel, and scroll to the bottom.
 
-# Instructions for Rigify (Pitchipoy)
+# Instructions for Rigify
 
-Update we now support a Rigify rig (Pitchipoy)!
-
-Map the mesh to an armature modifier, select the *mesh* and then click "Generate Physpose Rig" button.
+* First, you must create a rigify rig for your character
+  * Shift+a -> Armature -> Human
+  * Modify it and fit it to your character. Also set the weights. Automatic weights is the best method for me + manual tweaking
+  * Use the rig's UI in the side panel ("n" key) to set all limbs as FK
 * Make sure under template, select "Rigify (Pitchipoy)"
 * Select only the mesh, then click "Generate Physpose Rig".
   * boxes are created which are really convex mesh (click display as shapes button to view the meshes)
-  * pin will pin one of the convex meshes
+  * Pin will pin one of the rigid bodies in place
 * Make sure to create a "ground plane" rigid body object or your character will just "fall"
 * Press alt+a (play) to start the simulation
 
-Make sure the rig is in FK mode afterwards to see results.
+# Hints
+
+* up the frame counter to 300000 (maximum) and also set Rigid Body Cache to 300000 end frame.
+* up steps per second to 60, and solver iterations to 500 for best results (slow)
+* click "draw as shapes" button to see concave mesh and debug weird collisions that make it unstable. Try moving things on different collision layers if its seriously messed up.
 
 # Instructions for Genesis 3
+
+**Genesis 3 is probably not working any more. Please use rigify**
 
 * Import the dae file exported from daz
     * The armature may not be scaled properly. Use edit mode to fix it's position (morphs that shrink seem to cause this)
@@ -27,13 +35,9 @@ Make sure the rig is in FK mode afterwards to see results.
 
 # Notes about use on makehuman
 
-Makehuman (old version, export full rig) is experimental. Select makehuman v1 to try.
+**Makehuman (old version, export full rig) is experimental. Select makehuman v1 to try.**
 
-# Hints
 
-* up the frame counter to 300000 (maximum) and also set Rigid Body Cache to 300000 end frame.
-* up steps per second to 60, and solver iterations to 500 for best results (slow)
-* click "draw as shapes" button to see concave mesh and debug weird collisions that make it unstable. Try moving things on different collision layers if its seriously messed up.
 
 # A custom template
 
