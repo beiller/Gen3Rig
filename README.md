@@ -10,7 +10,7 @@ The UI will show up in the properties panel in the 3D view window.
   * Shift+a -> Armature -> Human
   * Modify it and fit it to your character. Also set the weights. Automatic weights is the best method for me + manual tweaking
   * Use the rig's UI in the side panel ("n" key) to set all limbs as FK
-* Make sure under template, select "Rigify (Pitchipoy)"
+* Make sure under template, select "Rigify (Pitchipoy)" and the mesh has an armature modifier pointing to the rigify rig
 * Select only the mesh, then click "Generate Physpose Rig".
   * boxes are created which are really convex mesh (click display as shapes button to view the meshes)
   * Pin will pin one of the rigid bodies in place
