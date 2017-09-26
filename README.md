@@ -22,6 +22,8 @@ The UI will show up in the properties panel in the 3D view window.
 * up the frame counter to 300000 (maximum) and also set Rigid Body Cache to 300000 end frame.
 * up steps per second to 60, and solver iterations to 500 for best results (slow)
 * click "draw as shapes" button to see concave mesh and debug weird collisions that make it unstable. Try moving things on different collision layers if its seriously messed up.
+* When you start again at frame zero, sometimes the rigid bodies are out of whack
+  * Select any rigid body / mesh / armature, and click "Reset to base pose" to fix
 
 # Instructions for Genesis 3
 

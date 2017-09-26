@@ -773,8 +773,8 @@ class PhysPosePanel(bpy.types.Panel):
         layout.operator("object.unpin_phys_object", text='Unpin Object(s)')
         if armature is not None:
             layout.label("Poses")
-            layout.prop(bpy.context.scene, 'pose_lib_selector')
-            layout.operator("object.apply_saved_state", text='Apply Pose')
+            #layout.prop(bpy.context.scene, 'pose_lib_selector')
+            #layout.operator("object.apply_saved_state", text='Apply Pose')
             layout.operator("object.reset_physpose_rig", text='Reset to Base Pose')
             #layout.operator("object.point_fingers", text='Clench Fingers')
             #layout.label("Keyframe Tools")
