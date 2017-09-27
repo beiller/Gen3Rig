@@ -1,5 +1,5 @@
 # Gen3Rig
-Convert from genesis 3 DAE export into a IK rig
+Convert a Rigify Rig to a Ragdoll
 
 The UI will show up in the properties panel in the 3D view window.
  Use the "n" key to toggle the side panel, and scroll to the bottom.
