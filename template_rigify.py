@@ -6,10 +6,10 @@ rigify_thumb_dof = 10.0
 
 template = {
     'bones': {
-        "tweak_spine" : [0.30, 0.30, None, None, True],
-        "tweak_spine.001" : [0.23, 0.17, None, None, True],
-        "tweak_spine.002" : [0.23, 0.16, None, None, True],
-        "tweak_spine.003" : [0.12, 0.20, None, None, True],
+        "tweak_spine" : [0.30, 0.30, "ORG-spine", None, True],
+        "tweak_spine.001" : [0.23, 0.17, "ORG-spine.001", None, True],
+        "tweak_spine.002" : [0.23, 0.16, "ORG-spine.002", None, True],
+        "tweak_spine.003" : [0.12, 0.20, "ORG-spine.003", None, True],
         "neck" : [0.1, 0.1, None, None, True],
         "head" : [0.25, 0.25, None, None, True],
         "thigh_fk.L" : [0.11, 0.11],

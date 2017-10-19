@@ -98,9 +98,17 @@ class PhysObject():
         const.target = self.phys_object
 
     def create_cube_at_bone(self, size_x = 0.1, size_z = 0.1, length = None, offset = None, copy_location = None):
-        bone_dist = Vector(self.pose_bone.tail) - Vector(self.pose_bone.head)
-        if not length:
+        if length is not None:
+            if isinstance(length, str):
+                # The length parameter here is a string representing the bone to use for length calculation
+                bone_for_dist = self.armature.pose.bones[length]
+                bone_dist = Vector(bone_for_dist.tail) - Vector(bone_for_dist.head)
+                length = bone_dist.length
+        else:
+            #  Use the bone that was passed as length
+            bone_dist = Vector(self.pose_bone.tail) - Vector(self.pose_bone.head)
             length = bone_dist.length
+
         self._create_rect(size_x, length, size_z, self.get_name(), offset)
         self.phys_object.layers = self.armature.layers
 
@@ -836,7 +844,7 @@ def unregister():
     del bpy.types.Object.phys_pose_spine_stiffness
     del bpy.types.Object.phys_pose_neck_stiffness
     del bpy.types.Object.phys_pose_shoulder_stiffness
-    del bpy.types.Object.pose_lib_selector
+    # del bpy.types.Object.pose_lib_selector
 
 
 if __name__ == "__main__":

@@ -62,10 +62,22 @@ def create_cube_at_bone(ob, bone_name, size_x = 0.1, size_z = 0.1, length = None
     if bone_name not in ob.pose.bones:
         return False
     bone = ob.pose.bones[bone_name]
-    bone_dist = Vector(bone.tail) - Vector(bone.head)
+
+    if length is not None:
+        pass  # Use the length as provided
+    else:
+        if isinstance(length, basestring):
+            # The length parameter here is a string representing the bone to use for length calculation
+            bone_for_dist = ob.pose.bones[length]
+            bone_dist = Vector(bone_for_dist.tail) - Vector(bone_for_dist.head)
+            print("DEBUG", bone_dist, bone_dist.length)
+            length = bone_dist.length
+        else:
+            #  Use the bone that was passed as length
+            bone_dist = Vector(bone.tail) - Vector(bone.head)
+            length = bone_dist.length
+
     bpy.ops.object.mode_set(mode='OBJECT')
-    if not length:
-        length = bone_dist.length
     cube = create_rect(size_x, length, size_z, get_phys_name(ob.name, bone_name), offset)
     cube.layers = ob.layers
 
