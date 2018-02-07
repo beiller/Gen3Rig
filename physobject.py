@@ -15,10 +15,13 @@ except ImportError:
 from . import template as makehuman_template
 from . import template_genesis3 as genesis3_template
 from . import template_rigify as rigify_template
+from . import template_genesis3_bvh as template_genesis3_bvh
+
 
 templates = [
     ('MakeHuman v1', makehuman_template),
     ('Genesis 3 Female', genesis3_template),
+    ('Genesis 3 Female BVH', template_genesis3_bvh),
     ('Rigify (Pitchipoy)', rigify_template)
 ]
 
