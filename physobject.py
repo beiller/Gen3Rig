@@ -354,7 +354,7 @@ class PhysPoseRig():
             return False
 
         phys_objects = []
-        phys_objects.append(PhysObject(self.armature, self.armature.pose.bones[start_bone_name], None, shrinkwrap_name))
+        phys_objects.append(PhysObject(self.armature, self.armature.pose.bones[start_bone_name], [bone_size, bone_size], shrinkwrap_name, density))
 
         def build_recurse(bone, phys_objects, counter, max_depth):
             for child in bone.children:
@@ -445,9 +445,10 @@ class PhysPoseRig():
             con = Constraint(phys_map[bone_name1], phys_map[bone_name2], parameters)
             self.constraints.append(con)
 
-        if custom_template is not None and self.armature.name in custom_template.templates:
+        if custom_template is not None:
             imp.reload(custom_template)
-            custom_template.templates[self.armature.name](self)
+            if self.armature.name in custom_template.templates:
+                custom_template.templates[self.armature.name](self)
         else:
             #No custom template exists.
             print("No custom template found", custom_template, self.armature.name)
