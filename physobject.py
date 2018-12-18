@@ -26,12 +26,17 @@ templates = [
 ]
 
 
-class PhysObject():
-    def __init__(self, armature, pose_bone, parameters=None, shrinkwrap_object_name=None, density=1100):
+class PhysObject:
+    def __init__(self, mesh_collection, armature, pose_bone, parameters=None, shrinkwrap_object_name=None, density=1100):
         self.armature = armature
         self.pose_bone = pose_bone
         self.phys_object = None
+        self.constraint_object = None
         self.density = density
+
+        # global collections
+        self.collection = mesh_collection
+
         # If objects already exist, load them up and bypass creation
         if self.get_name() in bpy.data.objects:
             self.phys_object = bpy.data.objects[self.get_name()]
@@ -45,6 +50,8 @@ class PhysObject():
                 self.shrinkwrap_to_object(shrinkwrap_object_name)
 
     def _create_rect(self, sx, sy, sz, name, offset = None):
+        bpy.ops.view3d.snap_cursor_to_center()
+
         """
             Creates 3D rectangle with size x (sx), y, and z.
              Y is scaled to 0.0 ... 1.0 range
@@ -79,9 +86,17 @@ class PhysObject():
 
         cube_object = bpy.data.objects.new(name, mesh_data)
 
-        scene = bpy.context.scene  
-        scene.objects.link(cube_object)  
+        self.collection.objects.link(cube_object)
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.ops.object.empty_add(type='ARROWS')
+
+        con = bpy.context.object
+        con.name = name + "-TO_BONE_OBJECT"
+
         self.phys_object = cube_object
+        self.constraint_object = con
         return cube_object
 
     def get_name(self):
@@ -93,12 +108,12 @@ class PhysObject():
                 con.mute = True
         const = self.pose_bone.constraints.new('COPY_ROTATION')
         const.name = 'PHYSPOSE-COPY-ROTATION'
-        const.target = self.phys_object
+        const.target = self.constraint_object
 
     def create_copy_location_constraint(self):
         const = self.pose_bone.constraints.new('COPY_LOCATION')
         const.name = 'PHYSPOSE-COPY-LOCATION'
-        const.target = self.phys_object
+        const.target = self.constraint_object
 
     def create_cube_at_bone(self, size_x = 0.1, size_z = 0.1, length = None, offset = None, copy_location = None):
         if length is not None:
@@ -113,20 +128,41 @@ class PhysObject():
             length = bone_dist.length
 
         self._create_rect(size_x, length, size_z, self.get_name(), offset)
-        self.phys_object.layers = self.armature.layers
+        # self.phys_object.layers = self.armature.layers
 
         mat = Matrix()
         mat[0][0:4] = (self.pose_bone.x_axis[0], self.pose_bone.y_axis[0], self.pose_bone.z_axis[0], self.pose_bone.head[0])
         mat[1][0:4] = (self.pose_bone.x_axis[1], self.pose_bone.y_axis[1], self.pose_bone.z_axis[1], self.pose_bone.head[1])
         mat[2][0:4] = (self.pose_bone.x_axis[2], self.pose_bone.y_axis[2], self.pose_bone.z_axis[2], self.pose_bone.head[2])
         self.phys_object.matrix_world = mat
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        self.phys_object.select_set(True)
+        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        self.constraint_object.select_set(True)
+        mat = Matrix()
+        mat[0][0:4] = (self.pose_bone.x_axis[0], self.pose_bone.y_axis[0], self.pose_bone.z_axis[0], self.pose_bone.head[0])
+        mat[1][0:4] = (self.pose_bone.x_axis[1], self.pose_bone.y_axis[1], self.pose_bone.z_axis[1], self.pose_bone.head[1])
+        mat[2][0:4] = (self.pose_bone.x_axis[2], self.pose_bone.y_axis[2], self.pose_bone.z_axis[2], self.pose_bone.head[2])
+        self.constraint_object.matrix_world = mat
+        self.constraint_object.parent = self.phys_object
+        self.constraint_object.matrix_parent_inverse = self.phys_object.matrix_world.inverted()
+
+        bpy.ops.object.select_all(action='DESELECT')
+        self.phys_object.select_set(True)
+
         self.create_copy_rotation_constraint()
         if copy_location:
             self.create_copy_location_constraint()
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
-        self.phys_object.select = True
-        bpy.context.scene.objects.active = self.phys_object
+        self.phys_object.select_set(True)
+        bpy.context.view_layer.objects.active = self.phys_object
+
         bpy.ops.rigidbody.objects_add(type='ACTIVE')
         bpy.ops.rigidbody.mass_calculate(density=self.density) #1.1g/m^3
         self.phys_object.rigid_body.angular_damping = 0.5
@@ -138,15 +174,15 @@ class PhysObject():
             470 is an adjustment factor because mass is calculated based on bounds
             so we "shave some off"
         """
-        self.phys_object.rigid_body.mass = sx * sy * sz * 470 
+        self.phys_object.rigid_body.mass = sx * sy * sz * 470
         self.phys_object.rigid_body.collision_shape = 'CONVEX_HULL'
         #self.phys_object.rigid_body.collision_shape = 'MESH'
 
     def shrinkwrap_to_object(self, shrinkwrap_object_name):
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
-        self.phys_object.select = True
-        bpy.context.scene.objects.active = self.phys_object
+        self.phys_object.select_set(True)
+
         ss = self.phys_object.modifiers.new('subsurf-to-apply', 'SUBSURF')
         ss.levels = 2
         ss.subdivision_type = 'SIMPLE'
@@ -171,7 +207,7 @@ class PhysObject():
     def set_damping(self, angular_damping_setting, linear_damping_setting = None):
         if not linear_damping_setting:
             linear_damping_setting = angular_damping_setting
-        if self.phys_object: 
+        if self.phys_object:
             self.phys_object.rigid_body.angular_damping = angular_damping_setting
             self.phys_object.rigid_body.linear_damping = linear_damping_setting
 
@@ -179,10 +215,14 @@ default_constraint_parameters = [-180, 180, -180, 180, -180, 180, True]
 
 
 class Constraint:
-    def __init__(self, phys_object1, phys_object2, parameters=default_constraint_parameters):
+    def __init__(self, constraint_collection, phys_object1, phys_object2, parameters=default_constraint_parameters):
         self.phys_object1 = phys_object1
         self.phys_object2 = phys_object2
         self.parameters = parameters
+
+        # global collections
+        self.collection = constraint_collection
+
         # If objects already exist, load them up and bypass creation
         if self.get_name() in bpy.data.objects:
             self.bone_constraint = bpy.data.objects[self.get_name()]
@@ -245,9 +285,11 @@ class Constraint:
         mat[0][0:4] = (bone.x_axis[0], bone.y_axis[0], bone.z_axis[0], bone.head[0])
         mat[1][0:4] = (bone.x_axis[1], bone.y_axis[1], bone.z_axis[1], bone.head[1])
         mat[2][0:4] = (bone.x_axis[2], bone.y_axis[2], bone.z_axis[2], bone.head[2])
-        con = bpy.context.scene.objects.active
+        con = bpy.context.object
+        bpy.context.view_layer.objects.active = con
         con.matrix_world = mat
-        con.layers = self.phys_object1.armature.layers
+
+        # con.layers = self.phys_object1.armature.layers
         bpy.ops.rigidbody.constraint_add()
         con.rigid_body_constraint.type = 'GENERIC'
         con.rigid_body_constraint.object1 = self.phys_object1.phys_object
@@ -293,17 +335,16 @@ class PhysPoseRig():
         phys_obj_dict = {}
         for phys_obj in data['phys_objects']:
             pose_bone_name = phys_obj['pose_bone']
-            po = PhysObject(self.armature, self.armature.pose.bones[pose_bone_name], None, None)
+            po = PhysObject(self.mesh_collection, self.armature, self.armature.pose.bones[pose_bone_name], None, None)
             self.phys_objects.append(po)
             phys_obj_dict[po.get_name()] = po
             self.rest_phys_matrix[po.get_name()] = Matrix(data['stored_pose'][po.get_name()])
             self.saved_state[pose_bone_name] = Matrix(data['saved_state'][pose_bone_name])
         for con in data['constraints']:
-            self.constraints.append(Constraint(phys_obj_dict[con['phys_object1']], phys_obj_dict[con['phys_object2']], con['parameters']))
+            self.constraints.append(Constraint(self.constraint_collection, phys_obj_dict[con['phys_object1']], phys_obj_dict[con['phys_object2']], con['parameters']))
 
     def __init__(self, armature, template):
-        armature.select = True
-        bpy.context.scene.objects.active = armature
+        armature.select_set(True)
         self.armature = armature
         self.phys_objects = []
         self.constraints = []
@@ -311,6 +352,14 @@ class PhysPoseRig():
         self.rest_phys_matrix = {}
         self.template = template
         self.saved_state = {}
+
+        self.root_collection = bpy.data.collections.new(armature.name)
+        self.mesh_collection = bpy.data.collections.new(armature.name+'-meshes')
+        self.constraint_collection = bpy.data.collections.new(armature.name+'-constraints')
+        self.root_collection.children.link(self.mesh_collection)
+        self.root_collection.children.link(self.constraint_collection)
+        bpy.context.scene.collection.children.link(self.root_collection)
+        bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[-1]
 
     def set_rest_matrix(self):
         for phys_object in self.phys_objects:
@@ -353,12 +402,16 @@ class PhysPoseRig():
             print("Error - start bone not found in chain - %s" % start_bone_name)
             return False
 
+        bpy.context.view_layer.active_layer_collection = \
+            bpy.context.view_layer.layer_collection.children[self.armature.name]\
+            .children[self.armature.name + '-meshes']
+
         phys_objects = []
-        phys_objects.append(PhysObject(self.armature, self.armature.pose.bones[start_bone_name], [bone_size, bone_size], shrinkwrap_name, density))
+        phys_objects.append(PhysObject(self.mesh_collection, self.armature, self.armature.pose.bones[start_bone_name], None, shrinkwrap_name))
 
         def build_recurse(bone, phys_objects, counter, max_depth):
             for child in bone.children:
-                phys_objects.append(PhysObject(self.armature, child, [bone_size, bone_size], shrinkwrap_name, density))
+                phys_objects.append(PhysObject(self.mesh_collection, self.armature, child, [bone_size, bone_size], shrinkwrap_name, density))
                 if counter < max_depth:
                     build_recurse(child, phys_objects, counter+1, max_depth)
         build_recurse(self.armature.pose.bones[start_bone_name], phys_objects, 0, chain_length)
@@ -368,16 +421,20 @@ class PhysPoseRig():
         cdx, cdy, cdz = bone_dof
         constraint_parameters = [-cdx,cdx,-cdy,cdy,-cdz,cdz,True]
 
-        for i in range(len(phys_objects)):   
+        bpy.context.view_layer.active_layer_collection = \
+            bpy.context.view_layer.layer_collection.children[self.armature.name]\
+            .children[self.armature.name + '-constraints']
+
+        for i in range(len(phys_objects)):
             if i+1 < len(phys_objects):
-                constraints.append( Constraint(phys_objects[i], phys_objects[i+1], constraint_parameters) )
+                constraints.append( Constraint(self.constraint_collection, phys_objects[i], phys_objects[i+1], constraint_parameters) )
 
         attach_phys = None
         for phys in self.phys_objects:
             if attach_bone_name == phys.phys_object.name.split('~')[2]:
                 attach_phys = phys
         if attach_phys:
-            constraints.append( Constraint(attach_phys, phys_objects[0], constraint_parameters) )
+            constraints.append( Constraint(self.constraint_collection, attach_phys, phys_objects[0], constraint_parameters) )
         else:
             print("Unable to find physobject ", attach_bone_name)
 
@@ -386,16 +443,18 @@ class PhysPoseRig():
         self.set_rest_matrix()
 
     def hide_constraints(self, hidden=True):
+        return
         for con in self.constraints:
-            con.bone_constraint.hide = hidden
+            con.bone_constraint.hide_viewport = hidden
 
     def hide_phys_objects(self, hidden=True):
+        return
         for con in self.phys_objects:
-            con.phys_object.hide = hidden
+            con.phys_object.hide_viewport = hidden
 
     def draw_phys_objects(self, draw_type='BOUNDS'):
         for con in self.phys_objects:
-            con.phys_object.draw_type = draw_type
+            con.phys_object.display_type = draw_type
 
     def apply_stiffness_map(self, stiffness):
         for m in stiffness:
@@ -420,6 +479,8 @@ class PhysPoseRig():
         bpy.context.scene.update()
 
     def move_physobj_collision_layer(self, ob_name_list, layer_number=1):
+        # TODO fix this
+        return
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
         for phys_obj in self.phys_objects:
@@ -435,20 +496,28 @@ class PhysPoseRig():
 
         self.shrinkwrap_object_name = shrinkwrap_object_name
         phys_map = {}
+
+        bpy.context.view_layer.active_layer_collection = \
+            bpy.context.view_layer.layer_collection.children[self.armature.name]\
+            .children[self.armature.name + '-meshes']
+
         for bone_name, params in bones_to_create.items():
-            po = PhysObject(self.armature, self.armature.pose.bones[bone_name], params, shrinkwrap_object_name)
+            po = PhysObject(self.mesh_collection, self.armature, self.armature.pose.bones[bone_name], params, shrinkwrap_object_name)
             self.phys_objects.append(po)
             phys_map[bone_name] = po
 
+        bpy.context.view_layer.active_layer_collection = \
+            bpy.context.view_layer.layer_collection.children[self.armature.name]\
+            .children[self.armature.name + '-constraints']
+
         for constraint in constraints:
             bone_name1, bone_name2, parameters = constraint
-            con = Constraint(phys_map[bone_name1], phys_map[bone_name2], parameters)
+            con = Constraint(self.constraint_collection, phys_map[bone_name1], phys_map[bone_name2], parameters)
             self.constraints.append(con)
 
-        if custom_template is not None:
+        if custom_template is not None and self.armature.name in custom_template.templates:
             imp.reload(custom_template)
-            if self.armature.name in custom_template.templates:
-                custom_template.templates[self.armature.name](self)
+            custom_template.templates[self.armature.name](self)
         else:
             #No custom template exists.
             print("No custom template found", custom_template, self.armature.name)
@@ -486,8 +555,8 @@ class PhysPoseRig():
 
     def delete_rig(self):
         do_hide = False
-        if self.armature.hide:
-            self.armature.hide = False
+        if self.armature.hide_viewport:
+            self.armature.hide_viewport = False
             do_hide = True
         bpy.ops.object.mode_set(mode='OBJECT')
         armature = self.armature
@@ -496,7 +565,7 @@ class PhysPoseRig():
 
         bpy.ops.object.select_all(action='DESELECT')
         physpose_data = json.loads(armature.phys_pose_data)
-        bpy.context.scene.layers = armature.layers
+        # bpy.context.scene.layers = armature.layers
 
         #armature.pose.bones["HandIk.R"].matrix = armature.pose.bones["Hand.R"].matrix.copy()
         #armature.pose.bones["HandIk.L"].matrix = armature.pose.bones["Hand.L"].matrix.copy()
@@ -514,21 +583,24 @@ class PhysPoseRig():
 
         for phys in self.phys_objects:
             name = phys.phys_object.name
-            bpy.data.objects[name].select = True
+            #bpy.context.selected_objects.append(bpy.data.objects[name])
+            #bpy.data.objects[name].select = True
+            bpy.data.objects[name].select_set(True)
         for constraint in self.constraints:
             name = constraint.bone_constraint.name
-            bpy.data.objects[name].hide = False
-            bpy.data.objects[name].select = True
+            #bpy.data.objects[name].hide_viewport = False
+            #bpy.context.selected_objects.append(bpy.data.objects[name])
+            bpy.data.objects[name].select_set(True)
 
         bpy.ops.object.delete()
         if do_hide:
-            self.armature.hide = True
+            self.armature.hide_viewport = True
         return True, "Success"
 
     def restore_physpose_rig(self):
         do_hide = False
-        if self.armature.hide:
-            self.armature.hide = False
+        if self.armature.hide_viewport:
+            self.armature.hide_viewport = False
             do_hide = True
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
@@ -538,7 +610,7 @@ class PhysPoseRig():
             bpy.data.objects[phys_obj.get_name()].matrix_world = self.rest_phys_matrix[phys_obj.get_name()]
         #bpy.context.scene.layers = oldlayers
         if do_hide:
-            self.armature.hide = True
+            self.armature.hide_viewport = True
         return True, "Success"
 
 
@@ -552,15 +624,23 @@ rigs = {}
 
 
 def get_armature():
-    if bpy.context.scene.objects.active.name[0:4] == 'PHYS':
-        phystype, armature, bone = bpy.context.scene.objects.active.name.split('~')
+    print("Getting armature")
+    active = bpy.context.selected_objects[-1]
+    if active.name[0:4] == 'PHYS':
+        phystype, armature, bone = active.name.split('~')
         return bpy.data.objects[armature]
-    elif type(bpy.context.scene.objects.active.data) == bpy.types.Mesh:
+    if active.name[0:5] == 'JOINT':
+        print("2", active.name)
+        phystype, armature, bone1, bone2 = active.name.split('~')
+        return bpy.data.objects[armature]
+    elif type(active.data) == bpy.types.Mesh:
+        print("3", active.name)
         #we have the mesh selected, grab the armature
-        return get_armature_from_mesh(bpy.context.scene.objects.active)
-    elif type(bpy.context.scene.objects.active.data) == bpy.types.Armature:
+        return get_armature_from_mesh(active)
+    elif type(active.data) == bpy.types.Armature:
+        print("4", active.name)
         #we have the armature selected, use it.
-        return bpy.context.scene.objects.active
+        return active
 
     return None
 
@@ -586,10 +666,11 @@ def create_rig():
     shrink_wrap_name = None
     ob = get_armature()
     ob.phys_pose_data = ""
-    if type(bpy.context.scene.objects.active.data) == bpy.types.Mesh:
-        mesh_object = bpy.context.scene.objects.active
+    active = bpy.context.selected_objects[-1]
+    if type(active.data) == bpy.types.Mesh:
+        mesh_object = active
         shrink_wrap_name = mesh_object.name
-    #if not type(bpy.context.scene.objects.active.data) == bpy.types.Mesh:
+    #if not type(active.data) == bpy.types.Mesh:
     #    return False, "Selected object is not a mesh"
     if not ob:
         return False, "Could not find armature"
@@ -780,19 +861,19 @@ class PhysPosePanel(bpy.types.Panel):
         armature = get_armature()
         if armature is not None:
             layout.operator("object.delete_physpose_rig", text='Delete PhysPose Rig')
-        layout.label("Pinning")
+        layout.label(text="Pinning")
         layout.operator("object.pin_phys_object", text='Pin Object(s)')
         layout.operator("object.unpin_phys_object", text='Unpin Object(s)')
         if armature is not None:
-            layout.label("Poses")
+            layout.label(text="Poses")
             #layout.prop(bpy.context.scene, 'pose_lib_selector')
             #layout.operator("object.apply_saved_state", text='Apply Pose')
             layout.operator("object.reset_physpose_rig", text='Reset to Base Pose')
             #layout.operator("object.point_fingers", text='Clench Fingers')
-            #layout.label("Keyframe Tools")
+            #layout.label(text="Keyframe Tools")
             #layout.operator("object.set_rotations_physpose_rig", text='Apply PhysPose to Rig')
             #layout.operator("object.unmute_constraints_physpose_rig", text='Unmute Constraints on PhysPose Rig')
-            layout.label("Set Damping")
+            layout.label(text="Set Damping")
             row = layout.row()
             row.prop(armature, 'phys_pose_damping', slider=True)
             row.operator("object.set_damping_physpose_rig", text='Set Damping')
