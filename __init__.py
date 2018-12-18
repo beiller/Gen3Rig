@@ -22,7 +22,7 @@ bl_info = {
     "name": "Gen3Rig",
     "version": (0, 1),
     "author": "beiller",
-    "blender": (2, 40, 0),
+    "blender": (2, 80, 0),
     "description": "Automatic rig conversion for genesis 3 characters, exported as DAE",
     "location": "View3d tools panel",
     "wiki_url": "https://github.com/beiller/Gen3Rig/wiki",
@@ -39,7 +39,7 @@ else:
     from . import utils, main, physobject
 import bpy
 
-class Gen3RigBuild(bpy.types.Operator):
+class GNR_OT_Gen3RigBuild(bpy.types.Operator):
     """Gen3RigBuild"""
     bl_idname = "object.convert_gen3_rig"
     bl_label = "Convert Genesis 3 Rig"
@@ -70,7 +70,7 @@ class Gen3RigBuild(bpy.types.Operator):
 #
 #    Menu in UI region
 #
-class UIPanel(bpy.types.Panel):
+class GNR_PT_UIPanel(bpy.types.Panel):
     bl_label = "Convert Genesis 3 Rig"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -80,18 +80,18 @@ class UIPanel(bpy.types.Panel):
 
 
 def menu_func(self, context):
-    self.layout.operator(Gen3RigBuild.bl_idname)
+    self.layout.operator(GNR_OT_Gen3RigBuild.bl_idname)
 
 
 def register():
-    bpy.utils.register_class(Gen3RigBuild)
-    bpy.utils.register_class(UIPanel)
+    bpy.utils.register_class(GNR_OT_Gen3RigBuild)
+    bpy.utils.register_class(GNR_PT_UIPanel)
     physobject.register()
 
 
 def unregister():
-    bpy.utils.unregister_class(Gen3RigBuild)
-    bpy.utils.unregister_class(UIPanel)
+    bpy.utils.unregister_class(GNR_OT_Gen3RigBuild)
+    bpy.utils.unregister_class(GNR_PT_UIPanel)
     physobject.unregister()
 
 
